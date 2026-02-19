@@ -1,16 +1,11 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata } from 'next';
+import { QueryProvider } from './providers/QueryProvider';
 
-import { Toaster } from "@/components/ui/sonner";
-import { QueryProvider } from "./providers/QueryProvider";
-
-import "./globals.css";
-
-const inter = Inter({ subsets: ["latin", "cyrillic"] });
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "Volshebny Admin",
-  description: "Admin Panel",
+  title: 'Volshebny Admin',
+  description: 'Admin Panel',
 };
 
 export default function RootLayout({
@@ -19,12 +14,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru">
-      <body className={inter.className}>
-        <QueryProvider>
-          {children}
-          <Toaster />
-        </QueryProvider>
+    <html lang="ru" className="dark">
+      <body className="min-h-screen bg-background text-foreground antialiased">
+        <QueryProvider>{children}</QueryProvider>
       </body>
     </html>
   );
