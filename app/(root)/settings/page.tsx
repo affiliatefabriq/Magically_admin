@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useSettings, useUpdateSettings } from '@/hooks/useAdmin';
-import { Loader2, Save, ImageIcon, Video, MessageSquare } from 'lucide-react';
+import {
+  Loader2,
+  Save,
+  ImageIcon,
+  Video,
+  MessageSquare,
+  Sparkle,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Page = () => {
@@ -12,7 +19,12 @@ const Page = () => {
   const [form, setForm] = useState({
     imageCost: 15,
     videoCost: 40,
+    aiCost1K: 15,
+    aiCost2K: 20,
     systemPrompt: '',
+    trialTokens: 50,
+    trialPeriodDays: 7,
+    subscriptionGracePeriodDays: 3,
   });
 
   useEffect(() => {
@@ -20,7 +32,12 @@ const Page = () => {
       setForm({
         imageCost: settings.imageCost,
         videoCost: settings.videoCost,
+        aiCost1K: settings.aiCost1K,
+        aiCost2K: settings.aiCost2K,
         systemPrompt: settings.systemPrompt,
+        trialTokens: settings.trialTokens,
+        trialPeriodDays: settings.trialPeriodDays,
+        subscriptionGracePeriodDays: settings.subscriptionGracePeriodDays,
       });
     }
   }, [settings]);
@@ -86,6 +103,35 @@ const Page = () => {
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
+
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <ImageIcon className="h-4 w-4 text-blue-400" />
+                AI 1K Cost
+              </label>
+              <input
+                type="number"
+                value={form.aiCost1K}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, aiCost1K: Number(e.target.value) }))
+                }
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <ImageIcon className="h-4 w-4 text-red-400" />
+                AI 2K Cost
+              </label>
+              <input
+                type="number"
+                value={form.aiCost2K}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, aiCost2K: Number(e.target.value) }))
+                }
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
           </div>
 
           {/* Preview */}
@@ -105,6 +151,106 @@ const Page = () => {
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">
                 за видео
+              </div>
+            </div>
+            <div className="h-8 w-px bg-border" />
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-400">
+                {form.aiCost1K}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                за 1k фото
+              </div>
+            </div>
+            <div className="h-8 w-px bg-border" />
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-400">
+                {form.aiCost2K}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                за 2k фото
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-6 space-y-5 w-full">
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Подписки и Триал</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Пробные токены</label>
+                <input
+                  type="number"
+                  value={form.trialTokens}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      trialTokens: Number(e.target.value),
+                    }))
+                  }
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Пробный период (дни)
+                </label>
+                <input
+                  type="number"
+                  value={form.trialPeriodDays}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      trialPeriodDays: Number(e.target.value),
+                    }))
+                  }
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Льготный период (дни)
+                </label>
+                <input
+                  type="number"
+                  value={form.subscriptionGracePeriodDays}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      subscriptionGracePeriodDays: Number(e.target.value),
+                    }))
+                  }
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-6 p-4 rounded-lg bg-muted/50 border border-border">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-amber-400">
+                {form.trialTokens}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Пробные токены
+              </div>
+            </div>
+            <div className="h-8 w-px bg-border" />
+            <div className="text-center">
+              <div className="text-2xl font-bold text-violet-400">
+                {form.trialPeriodDays}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Пробный период
+              </div>
+            </div>
+            <div className="h-8 w-px bg-border" />
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-400">
+                {form.subscriptionGracePeriodDays}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Льготный период
               </div>
             </div>
           </div>

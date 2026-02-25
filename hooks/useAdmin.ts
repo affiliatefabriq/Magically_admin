@@ -90,7 +90,12 @@ export const useAnalytics = (range?: TimeRange) => {
 export interface Settings {
   imageCost: number;
   videoCost: number;
+  aiCost1K: number;
+  aiCost2K: number;
   systemPrompt: string;
+  trialTokens: number;
+  trialPeriodDays: number;
+  subscriptionGracePeriodDays: number;
 }
 
 export const useSettings = () => {
@@ -123,6 +128,53 @@ export const useLogout = () => {
     mutationFn: adminLogout,
     onSuccess: () => {
       router.push('/login');
+    },
+  });
+};
+
+// Тарифы
+export const usePlans = () =>
+  useQuery({
+    queryKey: ['admin', 'plans'],
+    queryFn: async () => (await api.get('/admin/plans')).data.data.plans,
+  });
+
+export const useTariffStats = () =>
+  useQuery({
+    queryKey: ['admin', 'tariffStats'],
+    queryFn: async () => (await api.get('/admin/statistics/tariffs')).data.data,
+  });
+
+// Модерация Публикаций
+export const useAdminPublications = () =>
+  useQuery({
+    queryKey: ['admin', 'publications'],
+    queryFn: async () => (await api.get('/admin/publications')).data.data,
+  });
+export const useDeletePublication = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/admin/publications/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'publications'] });
+      toast.success('Удалено');
+    },
+  });
+};
+
+// Тренды
+export const useTrends = () =>
+  useQuery({
+    queryKey: ['admin', 'trends'],
+    queryFn: async () => (await api.get('/admin/trends')).data.data,
+  });
+export const useCreateTrend = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => api.post('/admin/trends', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'trends'] });
+      toast.success('Тренд создан');
     },
   });
 };

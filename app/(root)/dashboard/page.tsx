@@ -102,7 +102,7 @@ const Page = () => {
           data={historical.generations}
           title="Генерации"
           description="Количество AI-запросов по дням"
-          color="hsl(var(--primary))"
+          color="#FFC107"
           type="area"
         />
         <AnalyticsChart

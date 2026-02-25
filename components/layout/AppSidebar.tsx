@@ -18,29 +18,23 @@ import {
 } from '@/components/ui/sidebar';
 
 import {
+  Coins,
+  ImageIcon,
   LayoutDashboard,
   Loader2,
   LogOut,
   Settings,
+  TrendingUp,
   Users,
 } from 'lucide-react';
 
 const items = [
-  {
-    title: 'Дашборд',
-    url: '/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Пользователи',
-    url: '/users',
-    icon: Users,
-  },
-  {
-    title: 'Настройки',
-    url: '/settings',
-    icon: Settings,
-  },
+  { title: 'Дашборд', url: '/dashboard', icon: LayoutDashboard },
+  { title: 'Пользователи', url: '/users', icon: Users },
+  { title: 'Публикации', url: '/publications', icon: ImageIcon },
+  { title: 'Тренды', url: '/trends', icon: TrendingUp },
+  { title: 'Тарифы', url: '/tariffs', icon: Coins },
+  { title: 'Настройки', url: '/settings', icon: Settings },
 ];
 
 export function AppSidebar() {
