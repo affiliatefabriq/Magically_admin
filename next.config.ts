@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  allowedDevOrigins: ['l.app.volshebny.by']
+  allowedDevOrigins: ['l.app.volshebny.by'],
 };
 
 export default nextConfig;

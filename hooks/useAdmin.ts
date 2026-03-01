@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useInfiniteQuery,
+} from '@tanstack/react-query';
 import api, { adminLogout } from '@/lib/api';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -164,17 +169,65 @@ export const useDeletePublication = () => {
 
 // Тренды
 export const useTrends = () =>
-  useQuery({
-    queryKey: ['admin', 'trends'],
-    queryFn: async () => (await api.get('/admin/trends')).data.data,
+  useInfiniteQuery({
+    queryKey: ['admin', 'trends', 'infinite'],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await api.get('/admin/trends', {
+        params: { page: pageParam, limit: 20 },
+      });
+      return res.data.data;
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined,
+    initialPageParam: 1,
   });
+
+/** Один тренд по id */
+export const useTrend = (id: string) =>
+  useQuery({
+    queryKey: ['admin', 'trends', id],
+    queryFn: async () => (await api.get(`/admin/trends/${id}`)).data.data,
+    enabled: !!id,
+  });
+
 export const useCreateTrend = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => api.post('/admin/trends', data),
+    mutationFn: (data: FormData) =>
+      api.post('/admin/trends', data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'trends'] });
       toast.success('Тренд создан');
     },
+    onError: () => toast.error('Ошибка создания тренда'),
+  });
+};
+
+export const useUpdateTrend = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: FormData }) =>
+      api.put(`/admin/trends/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'trends'] });
+      toast.success('Тренд обновлен');
+    },
+    onError: () => toast.error('Ошибка обновления тренда'),
+  });
+};
+
+export const useDeleteTrend = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/admin/trends/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'trends'] });
+      toast.success('Тренд удален');
+    },
+    onError: () => toast.error('Ошибка удаления тренда'),
   });
 };
