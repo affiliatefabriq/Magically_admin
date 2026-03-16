@@ -75,11 +75,12 @@ export const useGiveTokens = () => {
 // --- Analytics ---
 export const useAnalytics = (range?: TimeRange) => {
   const params: Record<string, string> = {};
-  if (range?.preset) {
-    params.preset = range.preset;
-  } else if (range?.from && range?.to) {
-    params.from = range.from;
-    params.to = range.to;
+
+  if (range && 'preset' in range) {
+    params.preset = range.preset || 'week';
+  } else if (range && 'from' in range) {
+    params.from = range.from!;
+    params.to = range.to!;
   }
 
   return useQuery({

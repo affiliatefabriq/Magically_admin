@@ -27,6 +27,16 @@ import {
 import { ImageHandler } from '@/components/shared/ImageHandler';
 import { getImageUrl } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -186,6 +196,8 @@ function TrendFormDialog({
   const [form, setForm] = useState({
     content: editingTrend?.content || '',
     coverText: editingTrend?.coverText || '',
+    gender: editingTrend?.gender || '',
+    isHot: editingTrend?.isHot || false,
   });
 
   // Cover
@@ -234,6 +246,11 @@ function TrendFormDialog({
     const formData = new FormData();
     formData.append('content', form.content);
     formData.append('coverText', form.coverText);
+    formData.append('isHot', String(form.isHot));
+
+    if (form.gender) {
+      formData.append('gender', form.gender);
+    }
 
     if (coverFile) {
       formData.append('trendingCover', coverFile);
@@ -269,13 +286,13 @@ function TrendFormDialog({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-5 py-4">
+          <div className="space-y-5 mt-4 my-2">
             {/* Content */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">
+              <Label className="text-sm font-medium">
                 Текст (Контент / Промпт) *
-              </label>
-              <textarea
+              </Label>
+              <Textarea
                 required
                 rows={3}
                 value={form.content}
@@ -287,120 +304,108 @@ function TrendFormDialog({
               />
             </div>
 
-            {/* Cover text */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Текст на обложке</label>
-              <input
-                type="text"
-                value={form.coverText}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, coverText: e.target.value }))
-                }
-                placeholder="Trending Magic..."
-                className="flex h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-
-            {/* Cover image */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Обложка тренда</label>
-
-              {coverPreview ? (
-                <div className="relative w-full max-w-sm rounded-xl overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={coverPreview}
-                    alt="cover"
-                    className="w-full h-48 object-cover rounded-xl"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCoverFile(null);
-                      setRemoveCover(true);
-                    }}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 hover:bg-red-500 transition-colors"
-                  >
-                    <X className="w-4 h-4 text-white" />
-                  </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center w-full max-w-sm h-36 rounded-xl border-2 border-dashed border-input bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
-                  <ImageIcon className="w-8 h-8 text-muted-foreground mb-2" />
-                  <span className="text-sm text-muted-foreground">
-                    Нажмите для выбора
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      setCoverFile(e.target.files?.[0] || null);
-                      setRemoveCover(false);
-                    }}
-                  />
-                </label>
-              )}
-            </div>
-
-            {/* Image set */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">
-                  Набор изображений ({totalImages}/10)
-                </label>
-                {totalImages < 10 && (
-                  <label className="cursor-pointer text-xs text-primary hover:underline">
-                    + Добавить
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleAddNewImages(e.target.files)}
-                    />
-                  </label>
-                )}
+            {/* Gender & Hot */}
+            <div className="flex flex-col items-start justify-center w-full gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Пол</Label>
+                <Select
+                  value={form.gender}
+                  onValueChange={(value) =>
+                    setForm((f) => ({ ...f, gender: value }))
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Не указано" />
+                  </SelectTrigger>
+                  <SelectContent defaultValue="male">
+                    <SelectItem value="unspecified">Не указано</SelectItem>
+                    <SelectItem value="male">Мужской</SelectItem>
+                    <SelectItem value="female">Женский</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {totalImages > 0 ? (
-                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-                  {/* Existing server images */}
-                  {existingImages.map((img, i) => (
-                    <ImagePreview
-                      key={`existing-${i}`}
-                      src={img}
-                      onRemove={() => handleRemoveExistingImage(img)}
-                    />
-                  ))}
-                  {/* New local files */}
-                  {newImageFiles.map((file, i) => (
-                    <LocalImagePreview
-                      key={`new-${i}`}
-                      file={file}
-                      onRemove={() => handleRemoveNewImage(i)}
-                    />
-                  ))}
-                  {/* Add more placeholder */}
-                  {totalImages < 10 && (
-                    <label className="flex items-center justify-center rounded-lg border-2 border-dashed border-input aspect-square cursor-pointer hover:bg-muted/50 transition-colors">
-                      <Plus className="w-5 h-5 text-muted-foreground" />
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => handleAddNewImages(e.target.files)}
-                      />
-                    </label>
-                  )}
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed border-input bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
-                  <ImageIcon className="w-7 h-7 text-muted-foreground mb-1.5" />
-                  <span className="text-sm text-muted-foreground">
-                    Добавить изображения
-                  </span>
+              <div className="flex items-end">
+                <Label className="flex items-center gap-2 cursor-pointer">
+                  <Input
+                    type="checkbox"
+                    checked={form.isHot}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, isHot: e.target.checked }))
+                    }
+                    className="w-4 h-4 rounded border border-input"
+                  />
+                  <span className="text-sm font-medium">Горячий тренд</span>
+                </Label>
+              </div>
+            </div>
+          </div>
+
+          {/* Cover text */}
+          <div className="space-y-1.5 mt-4">
+            <Label className="text-sm font-medium">Текст на обложке</Label>
+            <Input
+              type="text"
+              value={form.coverText}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, coverText: e.target.value }))
+              }
+              placeholder="Trending Magic..."
+              className="flex h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+
+          {/* Cover image */}
+          <div className="my-2 space-y-2">
+            <Label className="text-sm font-medium">Обложка тренда</Label>
+
+            {coverPreview ? (
+              <div className="relative w-full max-w-sm rounded-xl overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={coverPreview}
+                  alt="cover"
+                  className="w-full h-48 object-cover rounded-xl"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCoverFile(null);
+                    setRemoveCover(true);
+                  }}
+                  className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 hover:bg-red-500 transition-colors"
+                >
+                  <X className="w-4 h-4 text-white" />
+                </button>
+              </div>
+            ) : (
+              <Label className="flex flex-col items-center justify-center w-full max-w-sm h-36 rounded-xl border-2 border-dashed border-input bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                <ImageIcon className="w-8 h-8 text-muted-foreground mb-2" />
+                <span className="text-sm text-muted-foreground">
+                  Нажмите для выбора
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    setCoverFile(e.target.files?.[0] || null);
+                    setRemoveCover(false);
+                  }}
+                />
+              </Label>
+            )}
+          </div>
+
+          {/* Image set */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">
+                Набор изображений ({totalImages}/10)
+              </Label>
+              {totalImages < 10 && (
+                <Label className="cursor-pointer text-xs text-primary hover:underline">
+                  + Добавить
                   <input
                     type="file"
                     multiple
@@ -408,9 +413,57 @@ function TrendFormDialog({
                     className="hidden"
                     onChange={(e) => handleAddNewImages(e.target.files)}
                   />
-                </label>
+                </Label>
               )}
             </div>
+
+            {totalImages > 0 ? (
+              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                {/* Existing server images */}
+                {existingImages.map((img, i) => (
+                  <ImagePreview
+                    key={`existing-${i}`}
+                    src={img}
+                    onRemove={() => handleRemoveExistingImage(img)}
+                  />
+                ))}
+                {/* New local files */}
+                {newImageFiles.map((file, i) => (
+                  <LocalImagePreview
+                    key={`new-${i}`}
+                    file={file}
+                    onRemove={() => handleRemoveNewImage(i)}
+                  />
+                ))}
+                {/* Add more placeholder */}
+                {totalImages < 10 && (
+                  <Label className="flex items-center justify-center rounded-lg border-2 border-dashed border-input aspect-square cursor-pointer hover:bg-muted/50 transition-colors">
+                    <Plus className="w-5 h-5 text-muted-foreground" />
+                    <Input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleAddNewImages(e.target.files)}
+                    />
+                  </Label>
+                )}
+              </div>
+            ) : (
+              <Label className="flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed border-input bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                <ImageIcon className="w-7 h-7 text-muted-foreground mb-1.5" />
+                <span className="text-sm text-muted-foreground">
+                  Добавить изображения
+                </span>
+                <Input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleAddNewImages(e.target.files)}
+                />
+              </Label>
+            )}
           </div>
 
           <DialogFooter>
@@ -459,7 +512,7 @@ function TrendCard({
       onClick={onView}
     >
       {/* Cover image */}
-      <div className="relative aspect-[4/3] bg-muted overflow-hidden">
+      <div className="relative aspect-4/3 bg-muted overflow-hidden">
         {trend.trendingCover ? (
           <ImageHandler
             src={trend.trendingCover}
@@ -474,7 +527,7 @@ function TrendCard({
 
         {/* Cover text overlay */}
         {trend.coverText && (
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end p-3">
+          <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent flex items-end p-3">
             <p className="text-white font-semibold text-sm line-clamp-2">
               {trend.coverText}
             </p>
@@ -529,7 +582,7 @@ function TrendCard({
 
 const SkeletonCard = () => (
   <div className="rounded-2xl overflow-hidden bg-card border border-border">
-    <div className="aspect-[4/3] bg-muted animate-pulse" />
+    <div className="aspect-4/3 bg-muted animate-pulse" />
     <div className="p-3 space-y-2">
       <div className="h-3 bg-muted animate-pulse rounded w-full" />
       <div className="h-3 bg-muted animate-pulse rounded w-3/4" />
