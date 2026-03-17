@@ -139,10 +139,24 @@ export const useLogout = () => {
 };
 
 // Тарифы
+export type AdminPlan = {
+  id: string;
+  name: string;
+  description: string | null;
+  tokenAmount: number;
+  price: number;
+  type: 'package' | 'subscription' | 'topup';
+  periodDays: number | null;
+  isActive: boolean;
+  currency: string;
+  uiConfig?: Record<string, unknown> | null;
+};
+
 export const usePlans = () =>
-  useQuery({
+  useQuery<AdminPlan[]>({
     queryKey: ['admin', 'plans'],
-    queryFn: async () => (await api.get('/admin/plans')).data.data.plans,
+    queryFn: async () =>
+      (await api.get('/admin/plans')).data.data.plans as AdminPlan[],
   });
 
 export const useTariffStats = () =>

@@ -59,6 +59,13 @@ const Page = () => {
     topReplicatedPublications,
     topReplicatedTrends,
   } = data;
+  const safeSegments = {
+    all: segments?.all ?? [],
+    active: segments?.active ?? [],
+    churned: segments?.churned ?? [],
+    modelNoGen: segments?.modelNoGen ?? [],
+    registeredOnly: segments?.registeredOnly ?? [],
+  };
   const totalUsers = overview.users;
 
   return (
@@ -170,7 +177,7 @@ const Page = () => {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <SegmentCard
             title="Активные"
-            count={segments.active.length}
+            count={safeSegments.active.length}
             total={totalUsers}
             icon={TrendingUp}
             color="text-emerald-500"
@@ -178,7 +185,7 @@ const Page = () => {
           />
           <SegmentCard
             title="Отвалившиеся"
-            count={segments.churned.length}
+            count={safeSegments.churned.length}
             total={totalUsers}
             icon={UserX}
             color="text-red-500"
@@ -186,7 +193,7 @@ const Page = () => {
           />
           <SegmentCard
             title="Без генераций"
-            count={segments.modelNoGen.length}
+            count={safeSegments.modelNoGen.length}
             total={totalUsers}
             icon={BookOpen}
             color="text-amber-500"
@@ -194,7 +201,7 @@ const Page = () => {
           />
           <SegmentCard
             title="Пустые регистрации"
-            count={segments.registeredOnly.length}
+            count={safeSegments.registeredOnly.length}
             total={totalUsers}
             icon={UserCheck}
             color="text-slate-400"
@@ -212,22 +219,22 @@ const Page = () => {
           <TabsList className="mb-4 flex-wrap h-auto gap-1">
             <TabsTrigger value="churned" className="gap-1.5">
               Требуют внимания
-              {segments.churned.length > 0 && (
+              {safeSegments.churned.length > 0 && (
                 <Badge variant="destructive" className="text-[10px] h-4 px-1.5">
-                  {segments.churned.length}
+                  {safeSegments.churned.length}
                 </Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="all" className="gap-1.5">
               Все пользователи
               <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
-                {segments.all.length}
+                {safeSegments.all.length}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="empty" className="gap-1.5">
               Пустые
               <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
-                {segments.registeredOnly.length}
+                {safeSegments.registeredOnly.length}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="failed" className="gap-1.5">
@@ -251,7 +258,7 @@ const Page = () => {
               Пользователи, переставшие генерировать — начислите им токены
             </p>
             <UsersTable
-              users={segments.churned.slice(0, 20)}
+              users={safeSegments.churned.slice(0, 20)}
               showLastGen
               emptyText="Отвалившихся пользователей нет 🎉"
             />
@@ -262,7 +269,7 @@ const Page = () => {
               Полный список всех зарегистрированных пользователей
             </p>
             <UsersTable
-              users={segments.all.slice(0, 50)}
+              users={safeSegments.all.slice(0, 50)}
               showLastGen
               showFailed
               emptyText="Пользователей пока нет"
@@ -274,7 +281,7 @@ const Page = () => {
               Зарегистрировались, но не создали ни модели, ни генерации
             </p>
             <UsersTable
-              users={segments.registeredOnly.slice(0, 30)}
+              users={safeSegments.registeredOnly.slice(0, 30)}
               emptyText="Пустых регистраций нет 🎉"
             />
           </TabsContent>
