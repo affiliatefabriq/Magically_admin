@@ -45,6 +45,9 @@ type AdminPlanUiConfig = {
   energyBonus: number;
   bottomTitle: string;
   bottomSubtitle: string;
+  topupMin: number;
+  topupMax: number;
+  topupStep: number;
 };
 
 type AdminPlan = {
@@ -89,6 +92,9 @@ export default function TariffsPage() {
       energyBonus: 0,
       bottomTitle: '',
       bottomSubtitle: '',
+      topupMin: 500,
+      topupMax: 10000,
+      topupStep: 500,
     },
   });
 
@@ -113,6 +119,9 @@ export default function TariffsPage() {
           energyBonus: form.uiConfig.energyBonus,
           bottomTitle: form.uiConfig.bottomTitle || undefined,
           bottomSubtitle: form.uiConfig.bottomSubtitle || undefined,
+          topupMin: form.uiConfig.topupMin || undefined,
+          topupMax: form.uiConfig.topupMax || undefined,
+          topupStep: form.uiConfig.topupStep || undefined,
         },
       };
       if (editingPlan?.id) {
@@ -185,6 +194,9 @@ export default function TariffsPage() {
         energyBonus: 0,
         bottomTitle: '',
         bottomSubtitle: '',
+        topupMin: 500,
+        topupMax: 10000,
+        topupStep: 500,
       },
     });
   };
@@ -214,8 +226,11 @@ export default function TariffsPage() {
         flaskIcon: ui.flaskIcon || '/assets/flask_green.svg',
         pointIcon: ui.pointIcon || '/assets/point_green.svg',
         energyBonus: ui.energyBonus ?? 0,
-         bottomTitle: ui.bottomTitle || '',
-         bottomSubtitle: ui.bottomSubtitle || '',
+        bottomTitle: ui.bottomTitle || '',
+        bottomSubtitle: ui.bottomSubtitle || '',
+        topupMin: ui.topupMin ?? 500,
+        topupMax: ui.topupMax ?? 10000,
+        topupStep: ui.topupStep ?? 500,
       },
     });
   };
@@ -495,6 +510,58 @@ export default function TariffsPage() {
                     }
                   />
                 </div>
+                {form.type === 'topup' && (
+                  <>
+                    <div className="space-y-1">
+                      <Label>Topup мин.</Label>
+                      <Input
+                        type="number"
+                        value={form.uiConfig.topupMin}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            uiConfig: {
+                              ...form.uiConfig,
+                              topupMin: Number(e.target.value),
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Topup макс.</Label>
+                      <Input
+                        type="number"
+                        value={form.uiConfig.topupMax}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            uiConfig: {
+                              ...form.uiConfig,
+                              topupMax: Number(e.target.value),
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1 col-span-2">
+                      <Label>Topup шаг</Label>
+                      <Input
+                        type="number"
+                        value={form.uiConfig.topupStep}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            uiConfig: {
+                              ...form.uiConfig,
+                              topupStep: Number(e.target.value),
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                  </>
+                )}
                 <div className="space-y-1 col-span-2">
                   <Label>Нижний заголовок</Label>
                   <Input
