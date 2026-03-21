@@ -112,8 +112,14 @@ export default function TariffsPage() {
         uiConfig: {
           themeKey: form.uiConfig.themeKey,
           cardBackground: form.uiConfig.cardBackground,
-          headerGradient: [form.uiConfig.headerGradientFrom, form.uiConfig.headerGradientTo],
-          buttonGradient: [form.uiConfig.buttonGradientFrom, form.uiConfig.buttonGradientTo],
+          headerGradient: [
+            form.uiConfig.headerGradientFrom,
+            form.uiConfig.headerGradientTo,
+          ],
+          buttonGradient: [
+            form.uiConfig.buttonGradientFrom,
+            form.uiConfig.buttonGradientTo,
+          ],
           flaskIcon: form.uiConfig.flaskIcon,
           pointIcon: form.uiConfig.pointIcon,
           energyBonus: form.uiConfig.energyBonus,
@@ -139,8 +145,7 @@ export default function TariffsPage() {
   const deactivateMutation = useMutation({
     mutationFn: async (planId: string) => {
       await api.put(`/admin/plans/${planId}`, {
-        isActive:
-          !plans?.find((p: any) => p.id === planId)?.isActive,
+        isActive: !plans?.find((p: any) => p.id === planId)?.isActive,
       });
     },
     onSuccess: () => {
@@ -162,11 +167,7 @@ export default function TariffsPage() {
     const value = Number(plan.price) || 0;
     const currency = (plan.currency || 'RUB').toUpperCase();
     const symbol =
-      currency === 'RUB'
-        ? '₽'
-        : currency === 'BYN'
-          ? 'Br'
-          : currency;
+      currency === 'RUB' ? '₽' : currency === 'BYN' ? 'Br' : currency;
     return `${symbol}${value}`;
   };
 
@@ -205,8 +206,12 @@ export default function TariffsPage() {
     setEditingPlan(plan);
     setIsDialogOpen(true);
     const ui = plan.uiConfig || {};
-    const headerGradient = Array.isArray(ui.headerGradient) ? ui.headerGradient : ['#AAFF00', '#268660'];
-    const buttonGradient = Array.isArray(ui.buttonGradient) ? ui.buttonGradient : ['#AAFF00', '#268660'];
+    const headerGradient = Array.isArray(ui.headerGradient)
+      ? ui.headerGradient
+      : ['#AAFF00', '#268660'];
+    const buttonGradient = Array.isArray(ui.buttonGradient)
+      ? ui.buttonGradient
+      : ['#AAFF00', '#268660'];
     setForm({
       name: plan.name,
       description: plan.description || '',
@@ -313,7 +318,10 @@ export default function TariffsPage() {
                 <Select
                   value={form.type}
                   onValueChange={(value) =>
-                    setForm({ ...form, type: value as 'package' | 'subscription' | 'topup' })
+                    setForm({
+                      ...form,
+                      type: value as 'package' | 'subscription' | 'topup',
+                    })
                   }
                 >
                   <SelectTrigger>
@@ -330,7 +338,9 @@ export default function TariffsPage() {
                 <Label>Валюта</Label>
                 <Select
                   value={form.currency}
-                  onValueChange={(value) => setForm({ ...form, currency: value })}
+                  onValueChange={(value) =>
+                    setForm({ ...form, currency: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Валюта" />
@@ -384,7 +394,10 @@ export default function TariffsPage() {
                     onChange={(e) =>
                       setForm({
                         ...form,
-                        uiConfig: { ...form.uiConfig, themeKey: e.target.value },
+                        uiConfig: {
+                          ...form.uiConfig,
+                          themeKey: e.target.value,
+                        },
                       })
                     }
                   />
@@ -595,7 +608,10 @@ export default function TariffsPage() {
               </div>
             </div>
 
-            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+            <Button
+              onClick={() => mutation.mutate()}
+              disabled={mutation.isPending}
+            >
               Сохранить
             </Button>
           </div>
@@ -613,9 +629,9 @@ export default function TariffsPage() {
             <DialogTitle>Удалить тариф?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Тариф «{planToDelete?.name}» будет удалён безвозвратно. Пользователи,
-            у которых он был активен, не потеряют историю, но новый покупку
-            оформить нельзя будет. Продолжить?
+            Тариф «{planToDelete?.name}» будет удалён безвозвратно.
+            Пользователи, у которых он был активен, не потеряют историю, но
+            новый покупку оформить нельзя будет. Продолжить?
           </p>
           <div className="mt-4 flex justify-end gap-2">
             <Button

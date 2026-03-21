@@ -49,8 +49,7 @@ const Page = () => {
         systemPrompt: settings.systemPrompt,
         trialTokens: settings.trialTokens,
         trialPeriodDays: settings.trialPeriodDays,
-        subscriptionGracePeriodDays:
-          settings.subscriptionGracePeriodDays,
+        subscriptionGracePeriodDays: settings.subscriptionGracePeriodDays,
 
         titlesEn: settings.titlesEn || {
           guest: [],

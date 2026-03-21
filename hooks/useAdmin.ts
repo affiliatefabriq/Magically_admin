@@ -103,15 +103,15 @@ export interface Settings {
   trialPeriodDays: number;
   subscriptionGracePeriodDays: number;
   titlesEn: {
-    guest: [],
-    noModel: [],
-    hasModel: [],
-  },
+    guest: [];
+    noModel: [];
+    hasModel: [];
+  };
   titlesRu: {
-    guest: [],
-    noModel: [],
-    hasModel: [],
-  },
+    guest: [];
+    noModel: [];
+    hasModel: [];
+  };
 }
 
 export const useSettings = () => {
