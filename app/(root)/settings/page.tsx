@@ -25,6 +25,18 @@ const Page = () => {
     trialTokens: 50,
     trialPeriodDays: 7,
     subscriptionGracePeriodDays: 3,
+
+    titlesEn: {
+      guest: [] as string[],
+      noModel: [] as string[],
+      hasModel: [] as string[],
+    },
+
+    titlesRu: {
+      guest: [] as string[],
+      noModel: [] as string[],
+      hasModel: [] as string[],
+    },
   });
 
   useEffect(() => {
@@ -37,13 +49,28 @@ const Page = () => {
         systemPrompt: settings.systemPrompt,
         trialTokens: settings.trialTokens,
         trialPeriodDays: settings.trialPeriodDays,
-        subscriptionGracePeriodDays: settings.subscriptionGracePeriodDays,
+        subscriptionGracePeriodDays:
+          settings.subscriptionGracePeriodDays,
+
+        titlesEn: settings.titlesEn || {
+          guest: [],
+          noModel: [],
+          hasModel: [],
+        },
+
+        titlesRu: settings.titlesRu || {
+          guest: [],
+          noModel: [],
+          hasModel: [],
+        },
       });
     }
   }, [settings]);
 
+  const states = ['guest', 'noModel', 'hasModel'] as const;
+
   const handleSave = () => {
-    update.mutate(form);
+    update.mutate(form as any);
   };
 
   if (isLoading) {
@@ -282,6 +309,56 @@ const Page = () => {
             <span>{form.systemPrompt.length} символов</span>
           </div>
         </div>
+      </div>
+
+      <div className="rounded-xl border p-6 space-y-4 w-full bg-card">
+        <h2 className="text-sm font-medium">Typewriter (RU)</h2>
+
+        {states.map((state) => (
+          <div key={state} className="space-y-2">
+            <label className="text-xs text-muted-foreground">
+              {state} (каждая строка = новое сообщение)
+            </label>
+
+            <textarea
+              rows={3}
+              value={(form.titlesRu[state] || []).join('\n')}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  titlesRu: {
+                    ...f.titlesRu,
+                    [state]: e.target.value.split('\n'),
+                  },
+                }))
+              }
+              className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-xl border p-6 space-y-4 w-full bg-card">
+        <h2 className="text-sm font-medium">Typewriter (EN)</h2>
+
+        {states.map((state) => (
+          <div key={state} className="space-y-2">
+            <textarea
+              rows={3}
+              value={(form.titlesEn[state] || []).join('\n')}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  titlesEn: {
+                    ...f.titlesEn,
+                    [state]: e.target.value.split('\n'),
+                  },
+                }))
+              }
+              className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+            />
+          </div>
+        ))}
       </div>
 
       {/* Save */}

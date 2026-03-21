@@ -102,6 +102,16 @@ export interface Settings {
   trialTokens: number;
   trialPeriodDays: number;
   subscriptionGracePeriodDays: number;
+  titlesEn: {
+    guest: [],
+    noModel: [],
+    hasModel: [],
+  },
+  titlesRu: {
+    guest: [],
+    noModel: [],
+    hasModel: [],
+  },
 }
 
 export const useSettings = () => {

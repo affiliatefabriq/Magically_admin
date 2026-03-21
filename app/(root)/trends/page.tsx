@@ -196,7 +196,7 @@ function TrendFormDialog({
   const [form, setForm] = useState({
     content: editingTrend?.content || '',
     coverText: editingTrend?.coverText || '',
-    gender: editingTrend?.gender || '',
+    gender: editingTrend?.gender || 'both',
     isHot: editingTrend?.isHot || false,
   });
 
@@ -317,10 +317,10 @@ function TrendFormDialog({
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Не указано" />
                   </SelectTrigger>
-                  <SelectContent defaultValue="male">
-                    <SelectItem value="unspecified">Не указано</SelectItem>
+                  <SelectContent defaultValue="both">
                     <SelectItem value="male">Мужской</SelectItem>
                     <SelectItem value="female">Женский</SelectItem>
+                    <SelectItem value="both">Оба</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
