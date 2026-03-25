@@ -94,6 +94,8 @@ export const useAnalytics = (range?: TimeRange) => {
 
 // --- Settings ---
 export interface Settings {
+  photoEffectsCollections: EffectCollection[];
+  videoEffectsCollections: EffectCollection[];
   imageCost: number;
   videoCost: number;
   aiCost1K: number;
@@ -112,6 +114,17 @@ export interface Settings {
     noModel: [];
     hasModel: [];
   };
+}
+
+export interface EffectCollection {
+  id: string;
+  title: string;
+  description?: string;
+  coverUrl?: string;
+  effectIds: string[];
+  sortOrder: number;
+  isActive: boolean;
+  options?: Record<string, string>;
 }
 
 export const useSettings = () => {

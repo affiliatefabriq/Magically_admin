@@ -1,22 +1,202 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSettings, useUpdateSettings } from '@/hooks/useAdmin';
+import {
+  useSettings,
+  useUpdateSettings,
+  type EffectCollection,
+} from '@/hooks/useAdmin';
 import {
   Loader2,
   Save,
   ImageIcon,
   Video,
   MessageSquare,
-  Sparkle,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+type StateKey = 'guest' | 'noModel' | 'hasModel';
+
+type FormState = {
+  imageCost: number;
+  videoCost: number;
+  aiCost1K: number;
+  aiCost2K: number;
+  systemPrompt: string;
+  trialTokens: number;
+  trialPeriodDays: number;
+  subscriptionGracePeriodDays: number;
+  titlesEn: Record<StateKey, string[]>;
+  titlesRu: Record<StateKey, string[]>;
+  photoEffectsCollections: EffectCollection[];
+  videoEffectsCollections: EffectCollection[];
+};
+
+const emptyCollection = (): EffectCollection => ({
+  id: crypto.randomUUID(),
+  title: '',
+  description: '',
+  coverUrl: '',
+  effectIds: [],
+  sortOrder: 0,
+  isActive: true,
+  options: {},
+});
+
+const parseLines = (value: string) =>
+  value
+    .split('\n')
+    .map((v) => v.trim())
+    .filter(Boolean);
+
+const CollectionsSection = ({
+  title,
+  subtitle,
+  value,
+  onChange,
+  optionHints,
+}: {
+  title: string;
+  subtitle: string;
+  value: EffectCollection[];
+  onChange: (next: EffectCollection[]) => void;
+  optionHints: string[];
+}) => {
+  const updateItem = (
+    index: number,
+    patch: Partial<EffectCollection>,
+    mergeOptions = false
+  ) => {
+    onChange(
+      value.map((item, i) => {
+        if (i !== index) return item;
+        if (!mergeOptions) return { ...item, ...patch };
+        return {
+          ...item,
+          ...patch,
+          options: { ...(item.options || {}), ...(patch.options || {}) },
+        };
+      })
+    );
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-6 space-y-4 w-full">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-medium text-sm uppercase tracking-wider">{title}</h2>
+          <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => onChange([...value, emptyCollection()])}
+          className="cursor-pointer"
+        >
+          <Plus className="h-4 w-4" />
+          Добавить коллекцию
+        </Button>
+      </div>
+
+      <div className="space-y-4">
+        {value.map((collection, index) => (
+          <div key={collection.id} className="rounded-lg border p-4 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input
+                value={collection.title}
+                onChange={(e) => updateItem(index, { title: e.target.value })}
+                placeholder="Название коллекции"
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              <input
+                type="number"
+                value={collection.sortOrder}
+                onChange={(e) =>
+                  updateItem(index, { sortOrder: Number(e.target.value) })
+                }
+                placeholder="Порядок"
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              <input
+                value={collection.coverUrl || ''}
+                onChange={(e) => updateItem(index, { coverUrl: e.target.value })}
+                placeholder="URL обложки"
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm md:col-span-2"
+              />
+              <textarea
+                rows={2}
+                value={collection.description || ''}
+                onChange={(e) =>
+                  updateItem(index, { description: e.target.value })
+                }
+                placeholder="Описание"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm md:col-span-2"
+              />
+              <textarea
+                rows={3}
+                value={(collection.effectIds || []).join('\n')}
+                onChange={(e) =>
+                  updateItem(index, { effectIds: parseLines(e.target.value) })
+                }
+                placeholder="Список effectId, каждый с новой строки"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm md:col-span-2"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {optionHints.map((key) => (
+                <input
+                  key={key}
+                  value={collection.options?.[key] || ''}
+                  onChange={(e) =>
+                    updateItem(
+                      index,
+                      { options: { [key]: e.target.value } },
+                      true,
+                    )
+                  }
+                  placeholder={`Опция: ${key}`}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={collection.isActive}
+                  onChange={(e) =>
+                    updateItem(index, { isActive: e.target.checked })
+                  }
+                />
+                Активна
+              </label>
+
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onChange(value.filter((_, i) => i !== index))}
+                className="cursor-pointer text-red-500"
+              >
+                <Trash2 className="h-4 w-4" />
+                Удалить
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const Page = () => {
   const { data: settings, isLoading } = useSettings();
   const update = useUpdateSettings();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormState>({
     imageCost: 15,
     videoCost: 40,
     aiCost1K: 15,
@@ -37,6 +217,8 @@ const Page = () => {
       noModel: [] as string[],
       hasModel: [] as string[],
     },
+    photoEffectsCollections: [],
+    videoEffectsCollections: [],
   });
 
   useEffect(() => {
@@ -50,6 +232,8 @@ const Page = () => {
         trialTokens: settings.trialTokens,
         trialPeriodDays: settings.trialPeriodDays,
         subscriptionGracePeriodDays: settings.subscriptionGracePeriodDays,
+        photoEffectsCollections: settings.photoEffectsCollections || [],
+        videoEffectsCollections: settings.videoEffectsCollections || [],
 
         titlesEn: settings.titlesEn || {
           guest: [],
@@ -66,7 +250,7 @@ const Page = () => {
     }
   }, [settings]);
 
-  const states = ['guest', 'noModel', 'hasModel'] as const;
+  const states: StateKey[] = ['guest', 'noModel', 'hasModel'];
 
   const handleSave = () => {
     update.mutate(form as any);
@@ -309,6 +493,26 @@ const Page = () => {
           </div>
         </div>
       </div>
+
+      <CollectionsSection
+        title="Коллекции фотоэффектов"
+        subtitle="Единая форма: базовые поля, список effectId и опции"
+        value={form.photoEffectsCollections}
+        onChange={(next) =>
+          setForm((f) => ({ ...f, photoEffectsCollections: next }))
+        }
+        optionHints={['model', 'orientation']}
+      />
+
+      <CollectionsSection
+        title="Коллекции видеоэффектов"
+        subtitle="Та же форма, с видео-ориентированными опциями"
+        value={form.videoEffectsCollections}
+        onChange={(next) =>
+          setForm((f) => ({ ...f, videoEffectsCollections: next }))
+        }
+        optionHints={['duration', 'orientation', 'audio']}
+      />
 
       <div className="rounded-xl border p-6 space-y-4 w-full bg-card">
         <h2 className="text-sm font-medium">Typewriter (RU)</h2>
