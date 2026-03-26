@@ -24,6 +24,7 @@ import {
   Loader2,
   LogOut,
   Settings,
+  Sparkles,
   TrendingUp,
   Users,
 } from 'lucide-react';
@@ -33,6 +34,7 @@ const items = [
   { title: 'Пользователи', url: '/users', icon: Users },
   { title: 'Публикации', url: '/publications', icon: ImageIcon },
   { title: 'Тренды', url: '/trends', icon: TrendingUp },
+  { title: 'Эффекты', url: '/effects', icon: Sparkles },
   { title: 'Тарифы', url: '/tariffs', icon: Coins },
   { title: 'Настройки', url: '/settings', icon: Settings },
 ];

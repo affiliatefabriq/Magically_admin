@@ -116,6 +116,24 @@ export interface Settings {
   };
 }
 
+export type AdminEffectTemplateType =
+  | 'photo_effect'
+  | 'video_effect'
+  | 'live_photo_template';
+
+export interface AdminEffectTemplate {
+  id: string;
+  name: string;
+  description?: string | null;
+  type: AdminEffectTemplateType;
+  provider: string;
+  modelParams?: Record<string, unknown> | null;
+  defaultPrompt?: string | null;
+  costTokens?: number | null;
+  isActive: boolean;
+  sortOrder: number;
+}
+
 export interface EffectCollection {
   id: string;
   title: string;
@@ -147,6 +165,61 @@ export const useUpdateSettings = () => {
       toast.success('Настройки сохранены');
     },
     onError: () => toast.error('Ошибка сохранения настроек'),
+  });
+};
+
+export const useEffectTemplates = (type?: AdminEffectTemplateType) =>
+  useQuery({
+    queryKey: ['admin', 'effect-templates', type],
+    queryFn: async () => {
+      const { data } = await api.get('/admin/effect-templates', {
+        params: type ? { type } : undefined,
+      });
+      return data.data as AdminEffectTemplate[];
+    },
+  });
+
+export const useCreateEffectTemplate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: Partial<AdminEffectTemplate>) =>
+      api.post('/admin/effect-templates', payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'effect-templates'] });
+      toast.success('Шаблон создан');
+    },
+    onError: () => toast.error('Ошибка создания шаблона'),
+  });
+};
+
+export const useUpdateEffectTemplate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: Partial<AdminEffectTemplate>;
+    }) => api.put(`/admin/effect-templates/${id}`, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'effect-templates'] });
+      toast.success('Шаблон обновлен');
+    },
+    onError: () => toast.error('Ошибка обновления шаблона'),
+  });
+};
+
+export const useDeleteEffectTemplate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) =>
+      api.delete(`/admin/effect-templates/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'effect-templates'] });
+      toast.success('Шаблон удален');
+    },
+    onError: () => toast.error('Ошибка удаления шаблона'),
   });
 };
 
