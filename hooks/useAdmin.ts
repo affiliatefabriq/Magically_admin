@@ -127,6 +127,7 @@ export interface AdminEffectTemplate {
   description?: string | null;
   type: AdminEffectTemplateType;
   provider: string;
+  coverUrl?: string | null;
   modelParams?: Record<string, unknown> | null;
   defaultPrompt?: string | null;
   costTokens?: number | null;
@@ -222,6 +223,19 @@ export const useDeleteEffectTemplate = () => {
     onError: () => toast.error('Ошибка удаления шаблона'),
   });
 };
+
+export const useUploadEffectCover = () =>
+  useMutation({
+    mutationFn: async (file: File) => {
+      const fd = new FormData();
+      fd.append('image', file);
+      const { data } = await api.post('/admin/uploads/effect-cover', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return data?.data?.url as string;
+    },
+    onError: () => toast.error('Ошибка загрузки изображения'),
+  });
 
 // --- Auth ---
 export const useLogout = () => {

@@ -9,6 +9,7 @@ import {
   useCreateEffectTemplate,
   useDeleteEffectTemplate,
   useEffectTemplates,
+  useUploadEffectCover,
   useUpdateEffectTemplate,
 } from '@/hooks/useAdmin';
 import { Button } from '@/components/ui/button';
@@ -29,12 +30,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { ImageHandler } from '@/components/shared/ImageHandler';
 
 type FormState = {
   name: string;
   description: string;
   type: AdminEffectTemplateType;
   provider: string;
+  coverUrl: string;
   defaultPrompt: string;
   costTokens: string;
   sortOrder: string;
@@ -47,6 +50,7 @@ const emptyForm = (type: AdminEffectTemplateType): FormState => ({
   description: '',
   type,
   provider: '',
+  coverUrl: '',
   defaultPrompt: '',
   costTokens: '',
   sortOrder: '0',
@@ -71,9 +75,13 @@ const Page = () => {
   const createTemplate = useCreateEffectTemplate();
   const updateTemplate = useUpdateEffectTemplate();
   const deleteTemplate = useDeleteEffectTemplate();
+  const uploadCover = useUploadEffectCover();
 
   const isPending =
-    createTemplate.isPending || updateTemplate.isPending || deleteTemplate.isPending;
+    createTemplate.isPending ||
+    updateTemplate.isPending ||
+    deleteTemplate.isPending ||
+    uploadCover.isPending;
 
   const sortedData = useMemo(
     () =>
@@ -98,6 +106,7 @@ const Page = () => {
       description: item.description || '',
       type: item.type,
       provider: item.provider || '',
+      coverUrl: item.coverUrl || '',
       defaultPrompt: item.defaultPrompt || '',
       costTokens:
         typeof item.costTokens === 'number' ? String(item.costTokens) : '',
@@ -123,6 +132,7 @@ const Page = () => {
       description: form.description.trim() || null,
       type: form.type,
       provider: form.provider.trim(),
+      coverUrl: form.coverUrl.trim() || null,
       defaultPrompt: form.defaultPrompt.trim() || null,
       modelParams: parsedModelParams,
       costTokens: form.costTokens.trim() ? Number(form.costTokens) : null,
@@ -242,6 +252,38 @@ const Page = () => {
                   }
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Обложка</Label>
+              <div className="flex flex-wrap items-center gap-3">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  className="max-w-sm"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const url = await uploadCover.mutateAsync(file);
+                    if (url) {
+                      setForm((f) => ({ ...f, coverUrl: url }));
+                      toast.success('Обложка загружена');
+                    }
+                  }}
+                />
+                {uploadCover.isPending ? (
+                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                ) : null}
+              </div>
+              {form.coverUrl ? (
+                <div className="rounded-lg border overflow-hidden w-40 h-40">
+                  <ImageHandler
+                    src={form.coverUrl}
+                    alt="cover"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : null}
             </div>
 
             <div className="grid grid-cols-3 gap-3">

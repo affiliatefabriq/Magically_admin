@@ -5,6 +5,7 @@ import {
   useSettings,
   useUpdateSettings,
   type EffectCollection,
+  useUploadEffectCover,
 } from '@/hooks/useAdmin';
 import {
   Loader2,
@@ -16,6 +17,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ImageHandler } from '@/components/shared/ImageHandler';
 
 type StateKey = 'guest' | 'noModel' | 'hasModel';
 
@@ -57,17 +59,21 @@ const CollectionsSection = ({
   value,
   onChange,
   optionHints,
+  onUploadCover,
+  isUploadingCover,
 }: {
   title: string;
   subtitle: string;
   value: EffectCollection[];
-  onChange: (next: EffectCollection[]) => void;
+  onChange: CallableFunction;
   optionHints: string[];
+  onUploadCover: CallableFunction;
+  isUploadingCover: boolean;
 }) => {
   const updateItem = (
     index: number,
     patch: Partial<EffectCollection>,
-    mergeOptions = false
+    mergeOptions = false,
   ) => {
     onChange(
       value.map((item, i) => {
@@ -78,7 +84,7 @@ const CollectionsSection = ({
           ...patch,
           options: { ...(item.options || {}), ...(patch.options || {}) },
         };
-      })
+      }),
     );
   };
 
@@ -86,7 +92,9 @@ const CollectionsSection = ({
     <div className="rounded-xl border border-border bg-card p-6 space-y-4 w-full">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="font-medium text-sm uppercase tracking-wider">{title}</h2>
+          <h2 className="font-medium text-sm uppercase tracking-wider">
+            {title}
+          </h2>
           <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
         </div>
         <Button
@@ -119,12 +127,32 @@ const CollectionsSection = ({
                 placeholder="Порядок"
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
-              <input
-                value={collection.coverUrl || ''}
-                onChange={(e) => updateItem(index, { coverUrl: e.target.value })}
-                placeholder="URL обложки"
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm md:col-span-2"
-              />
+              <div className="md:col-span-2 space-y-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      void onUploadCover(file, index);
+                    }}
+                    className="flex h-9 w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                  {isUploadingCover ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : null}
+                </div>
+                {collection.coverUrl ? (
+                  <div className="w-32 h-32 rounded-lg overflow-hidden border">
+                    <ImageHandler
+                      src={collection.coverUrl}
+                      alt={collection.title || 'collection cover'}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : null}
+              </div>
               <textarea
                 rows={2}
                 value={collection.description || ''}
@@ -195,6 +223,7 @@ const CollectionsSection = ({
 const Page = () => {
   const { data: settings, isLoading } = useSettings();
   const update = useUpdateSettings();
+  const uploadCover = useUploadEffectCover();
 
   const [form, setForm] = useState<FormState>({
     imageCost: 15,
@@ -223,30 +252,33 @@ const Page = () => {
 
   useEffect(() => {
     if (settings) {
-      setForm({
-        imageCost: settings.imageCost,
-        videoCost: settings.videoCost,
-        aiCost1K: settings.aiCost1K,
-        aiCost2K: settings.aiCost2K,
-        systemPrompt: settings.systemPrompt,
-        trialTokens: settings.trialTokens,
-        trialPeriodDays: settings.trialPeriodDays,
-        subscriptionGracePeriodDays: settings.subscriptionGracePeriodDays,
-        photoEffectsCollections: settings.photoEffectsCollections || [],
-        videoEffectsCollections: settings.videoEffectsCollections || [],
+      const timer = setTimeout(() => {
+        setForm({
+          imageCost: settings.imageCost,
+          videoCost: settings.videoCost,
+          aiCost1K: settings.aiCost1K,
+          aiCost2K: settings.aiCost2K,
+          systemPrompt: settings.systemPrompt,
+          trialTokens: settings.trialTokens,
+          trialPeriodDays: settings.trialPeriodDays,
+          subscriptionGracePeriodDays: settings.subscriptionGracePeriodDays,
+          photoEffectsCollections: settings.photoEffectsCollections || [],
+          videoEffectsCollections: settings.videoEffectsCollections || [],
 
-        titlesEn: settings.titlesEn || {
-          guest: [],
-          noModel: [],
-          hasModel: [],
-        },
+          titlesEn: settings.titlesEn || {
+            guest: [],
+            noModel: [],
+            hasModel: [],
+          },
 
-        titlesRu: settings.titlesRu || {
-          guest: [],
-          noModel: [],
-          hasModel: [],
-        },
-      });
+          titlesRu: settings.titlesRu || {
+            guest: [],
+            noModel: [],
+            hasModel: [],
+          },
+        });
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [settings]);
 
@@ -254,6 +286,25 @@ const Page = () => {
 
   const handleSave = () => {
     update.mutate(form as any);
+  };
+
+  const handleUploadCollectionCover = async (
+    file: File,
+    index: number,
+    kind: 'photo' | 'video',
+  ) => {
+    const url = await uploadCover.mutateAsync(file);
+    if (!url) return;
+    setForm((prev) => {
+      const key =
+        kind === 'photo'
+          ? 'photoEffectsCollections'
+          : 'videoEffectsCollections';
+      const next = [...prev[key]];
+      if (!next[index]) return prev;
+      next[index] = { ...next[index], coverUrl: url };
+      return { ...prev, [key]: next };
+    });
   };
 
   if (isLoading) {
@@ -498,20 +549,28 @@ const Page = () => {
         title="Коллекции фотоэффектов"
         subtitle="Единая форма: базовые поля, список effectId и опции"
         value={form.photoEffectsCollections}
-        onChange={(next) =>
+        onChange={(next: EffectCollection[]) =>
           setForm((f) => ({ ...f, photoEffectsCollections: next }))
         }
         optionHints={['model', 'orientation']}
+        onUploadCover={(file: File, index: number) =>
+          handleUploadCollectionCover(file, index, 'photo')
+        }
+        isUploadingCover={uploadCover.isPending}
       />
 
       <CollectionsSection
         title="Коллекции видеоэффектов"
         subtitle="Та же форма, с видео-ориентированными опциями"
         value={form.videoEffectsCollections}
-        onChange={(next) =>
+        onChange={(next: EffectCollection[]) =>
           setForm((f) => ({ ...f, videoEffectsCollections: next }))
         }
         optionHints={['duration', 'orientation', 'audio']}
+        onUploadCover={(file: File, index: number) =>
+          handleUploadCollectionCover(file, index, 'video')
+        }
+        isUploadingCover={uploadCover.isPending}
       />
 
       <div className="rounded-xl border p-6 space-y-4 w-full bg-card">
