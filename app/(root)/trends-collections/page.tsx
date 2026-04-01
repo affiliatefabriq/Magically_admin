@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Edit, Loader2, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -10,6 +10,7 @@ import {
   useDeleteEffectTemplate,
   useDeleteTrend,
   useEffectTemplates,
+  useUploadEffectCover,
   useSettings,
   useTrends,
   useUpdateEffectTemplate,
@@ -121,6 +122,9 @@ const mapAddTypeToEffectType = (v: AddType): AdminEffectTemplateType => {
   return 'photo_effect';
 };
 
+const isVideoUrl = (url: string) =>
+  /\.(mp4|mov|webm|mkv)(\?.*)?$/i.test(url.split('?')[0]);
+
 export default function Page() {
   const [view, setView] = useState<ViewFilter>('trends');
   const [addType, setAddType] = useState<AddType>('trend');
@@ -129,6 +133,7 @@ export default function Page() {
   const [editingTrend, setEditingTrend] = useState<any | null>(null);
   const [editingEffect, setEditingEffect] =
     useState<AdminEffectTemplate | null>(null);
+  const [draggingEffectId, setDraggingEffectId] = useState<string | null>(null);
 
   const [trendForm, setTrendForm] = useState<TrendFormState>(emptyTrendForm);
   const [trendCover, setTrendCover] = useState<File | null>(null);
@@ -137,6 +142,8 @@ export default function Page() {
   const [effectForm, setEffectForm] = useState<EffectFormState>(
     emptyEffectForm('photo_effect'),
   );
+  const [effectCoverFile, setEffectCoverFile] = useState<File | null>(null);
+  const [effectCoverUrl, setEffectCoverUrl] = useState('');
 
   const trendsQ = useTrends();
   const settingsQ = useSettings();
@@ -156,6 +163,7 @@ export default function Page() {
   const createEffect = useCreateEffectTemplate();
   const updateEffect = useUpdateEffectTemplate();
   const deleteEffect = useDeleteEffectTemplate();
+  const uploadEffectCover = useUploadEffectCover();
 
   const trendItems = useMemo(
     () => trendsQ.data?.pages.flatMap((p: any) => p.items || []) || [],
@@ -165,10 +173,45 @@ export default function Page() {
   const sortedEffects = useMemo(
     () =>
       [...(effectsQ.data || [])].sort(
-        (a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0),
+        (a, b) =>
+          Number(a.sortOrder || 0) - Number(b.sortOrder || 0) ||
+          a.name.localeCompare(b.name),
       ),
     [effectsQ.data],
   );
+
+  const effectCoverPreviewUrl = useMemo(
+    () => (effectCoverFile ? URL.createObjectURL(effectCoverFile) : ''),
+    [effectCoverFile],
+  );
+
+  const moveEffect = async (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    const list = [...sortedEffects];
+    const fromIndex = list.findIndex((x) => x.id === fromId);
+    const toIndex = list.findIndex((x) => x.id === toId);
+    if (fromIndex < 0 || toIndex < 0) return;
+    const [moved] = list.splice(fromIndex, 1);
+    list.splice(toIndex, 0, moved);
+    const updates = list.map((item, index) => ({
+      id: item.id,
+      sortOrder: index,
+    }));
+    for (const update of updates) {
+      const original =
+        sortedEffects.find((x) => x.id === update.id)?.sortOrder ?? 0;
+      if (original === update.sortOrder) continue;
+      await updateEffect.mutateAsync({
+        id: update.id,
+        payload: { sortOrder: update.sortOrder },
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!effectCoverPreviewUrl) return;
+    return () => URL.revokeObjectURL(effectCoverPreviewUrl);
+  }, [effectCoverPreviewUrl]);
 
   const openAdd = () => {
     if (addType === 'trend') {
@@ -182,6 +225,8 @@ export default function Page() {
     const type = mapAddTypeToEffectType(addType);
     setEditingEffect(null);
     setEffectForm(emptyEffectForm(type));
+    setEffectCoverFile(null);
+    setEffectCoverUrl('');
     setEffectDialogOpen(true);
   };
 
@@ -208,6 +253,8 @@ export default function Page() {
       defaultPrompt: item.defaultPrompt || '',
       isActive: item.isActive,
     });
+    setEffectCoverFile(null);
+    setEffectCoverUrl(item.coverUrl || '');
     setEffectDialogOpen(true);
   };
 
@@ -234,35 +281,46 @@ export default function Page() {
     }
   };
 
-  const submitEffect = () => {
+  const submitEffect = async () => {
     if (!effectForm.name.trim()) {
       toast.error('Заполните название');
       return;
     }
-    const baseParams =
-      editingEffect?.modelParams &&
-      typeof editingEffect.modelParams === 'object'
-        ? editingEffect.modelParams
-        : {};
-    const payload: Partial<AdminEffectTemplate> = {
-      name: effectForm.name.trim(),
-      description: effectForm.description.trim() || null,
-      type: effectForm.type,
-      provider:
-        MODEL_PROVIDER_MAP[effectForm.model] || MODEL_PROVIDER_MAP.kling,
-      defaultPrompt: effectForm.defaultPrompt.trim() || null,
-      modelParams: { ...baseParams, model: effectForm.model },
-      isActive: effectForm.isActive,
-    };
-    if (editingEffect) {
-      updateEffect.mutate(
-        { id: editingEffect.id, payload },
-        { onSuccess: () => setEffectDialogOpen(false) },
-      );
-    } else {
-      createEffect.mutate(payload, {
-        onSuccess: () => setEffectDialogOpen(false),
-      });
+    try {
+      const baseParams =
+        editingEffect?.modelParams &&
+        typeof editingEffect.modelParams === 'object'
+          ? editingEffect.modelParams
+          : {};
+      let coverUrl = effectCoverUrl.trim() || null;
+      if (effectCoverFile) {
+        const uploaded = await uploadEffectCover.mutateAsync(effectCoverFile);
+        coverUrl = uploaded || null;
+      }
+
+      const payload: Partial<AdminEffectTemplate> = {
+        name: effectForm.name.trim(),
+        description: effectForm.description.trim() || null,
+        type: effectForm.type,
+        provider:
+          MODEL_PROVIDER_MAP[effectForm.model] || MODEL_PROVIDER_MAP.kling,
+        coverUrl,
+        defaultPrompt: effectForm.defaultPrompt.trim() || null,
+        modelParams: { ...baseParams, model: effectForm.model },
+        isActive: effectForm.isActive,
+      };
+      if (editingEffect) {
+        updateEffect.mutate(
+          { id: editingEffect.id, payload },
+          { onSuccess: () => setEffectDialogOpen(false) },
+        );
+      } else {
+        createEffect.mutate(payload, {
+          onSuccess: () => setEffectDialogOpen(false),
+        });
+      }
+    } catch {
+      return;
     }
   };
 
@@ -409,8 +467,24 @@ export default function Page() {
             </div>
           ) : (
             <div className="divide-y">
+              {effectsType ? (
+                <div className="px-4 py-2 text-xs text-muted-foreground">
+                  Приоритет можно менять перетаскиванием строк
+                </div>
+              ) : null}
               {sortedEffects.map((item) => (
-                <div key={item.id} className="p-4 flex items-center gap-4">
+                <div
+                  key={item.id}
+                  className="p-4 flex items-center gap-4"
+                  draggable={!!effectsType}
+                  onDragStart={() => setDraggingEffectId(item.id)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={async () => {
+                    if (!effectsType || !draggingEffectId) return;
+                    await moveEffect(draggingEffectId, item.id);
+                    setDraggingEffectId(null);
+                  }}
+                >
                   <div className="min-w-0 flex-1">
                     <div className="font-medium truncate">{item.name}</div>
                     <div className="text-xs text-muted-foreground">
@@ -629,6 +703,41 @@ export default function Page() {
                   }))
                 }
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Превью (изображение или видео)</Label>
+              <Input
+                type="file"
+                accept={
+                  effectForm.type === 'video_effect' ||
+                  effectForm.type === 'live_photo_template'
+                    ? 'image/*,video/*'
+                    : 'image/*'
+                }
+                onChange={(e) =>
+                  setEffectCoverFile(e.target.files?.[0] || null)
+                }
+              />
+              {(effectCoverPreviewUrl || effectCoverUrl) && (
+                <div className="rounded-lg border overflow-hidden w-40 h-40 bg-muted">
+                  {isVideoUrl(effectCoverPreviewUrl || effectCoverUrl) ? (
+                    <video
+                      src={effectCoverPreviewUrl || effectCoverUrl}
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                    />
+                  ) : (
+                    <ImageHandler
+                      src={effectCoverPreviewUrl || effectCoverUrl}
+                      alt="cover"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
