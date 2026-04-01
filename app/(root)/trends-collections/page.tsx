@@ -1,7 +1,12 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import { Edit, Loader2, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -14,9 +19,11 @@ import {
   useSettings,
   useTrends,
   useUpdateEffectTemplate,
+  useUpdateSettings,
   useUpdateTrend,
   type AdminEffectTemplate,
   type AdminEffectTemplateType,
+  type EffectCollection,
 } from '@/hooks/useAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -125,6 +132,200 @@ const mapAddTypeToEffectType = (v: AddType): AdminEffectTemplateType => {
 const isVideoUrl = (url: string) =>
   /\.(mp4|mov|webm|mkv)(\?.*)?$/i.test(url.split('?')[0]);
 
+const parseLines = (value: string) =>
+  value
+    .split('\n')
+    .map((v) => v.trim())
+    .filter(Boolean);
+
+const emptyCollection = (): EffectCollection => ({
+  id: crypto.randomUUID(),
+  title: '',
+  description: '',
+  coverUrl: '',
+  effectIds: [],
+  sortOrder: 0,
+  isActive: true,
+  options: {},
+});
+type CollectionsEditorProps = {
+  title: string;
+  subtitle: string;
+  value: EffectCollection[];
+  onChange: Dispatch<SetStateAction<EffectCollection[]>>;
+  optionHints: string[];
+  coverAccept: string;
+  onUploadCover: CallableFunction;
+  isUploadingCover: boolean;
+};
+
+function CollectionsEditor({
+  title,
+  subtitle,
+  value,
+  onChange,
+  optionHints,
+  coverAccept,
+  onUploadCover,
+  isUploadingCover,
+}: CollectionsEditorProps) {
+  const updateItem = (
+    index: number,
+    patch: Partial<EffectCollection>,
+    mergeOptions = false,
+  ) => {
+    onChange(
+      value.map((item, i) => {
+        if (i !== index) return item;
+        if (!mergeOptions) return { ...item, ...patch };
+        return {
+          ...item,
+          ...patch,
+          options: { ...(item.options || {}), ...(patch.options || {}) },
+        };
+      }),
+    );
+  };
+
+  return (
+    <div className="rounded-xl border bg-card p-6 space-y-4 w-full">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="font-medium text-sm uppercase tracking-wider">
+            {title}
+          </h2>
+          <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => onChange([...value, emptyCollection()])}
+        >
+          <Plus className="h-4 w-4" />
+          Добавить коллекцию
+        </Button>
+      </div>
+
+      <div className="space-y-4">
+        {value.map((collection, index) => (
+          <div key={collection.id} className="rounded-lg border p-4 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Input
+                value={collection.title}
+                onChange={(e) => updateItem(index, { title: e.target.value })}
+                placeholder="Название коллекции"
+              />
+              <Input
+                type="number"
+                value={collection.sortOrder}
+                onChange={(e) =>
+                  updateItem(index, { sortOrder: Number(e.target.value) })
+                }
+                placeholder="Порядок"
+              />
+              <div className="md:col-span-2 space-y-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Input
+                    type="file"
+                    accept={coverAccept}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      onUploadCover(file, index);
+                    }}
+                    className="max-w-sm"
+                  />
+                  {isUploadingCover ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : null}
+                </div>
+                {collection.coverUrl ? (
+                  <div className="w-32 h-32 rounded-lg overflow-hidden border">
+                    {isVideoUrl(collection.coverUrl) ? (
+                      <video
+                        src={collection.coverUrl}
+                        className="w-full h-full object-cover"
+                        muted
+                        playsInline
+                        loop
+                        autoPlay
+                      />
+                    ) : (
+                      <ImageHandler
+                        src={collection.coverUrl}
+                        alt={collection.title || 'cover'}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+                ) : null}
+              </div>
+              <Textarea
+                rows={2}
+                value={collection.description || ''}
+                onChange={(e) =>
+                  updateItem(index, { description: e.target.value })
+                }
+                placeholder="Описание"
+                className="md:col-span-2"
+              />
+              <Textarea
+                rows={3}
+                value={(collection.effectIds || []).join('\n')}
+                onChange={(e) =>
+                  updateItem(index, { effectIds: parseLines(e.target.value) })
+                }
+                placeholder="Список effectId, каждый с новой строки"
+                className="md:col-span-2"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {optionHints.map((key) => (
+                <Input
+                  key={key}
+                  value={collection.options?.[key] || ''}
+                  onChange={(e) =>
+                    updateItem(
+                      index,
+                      { options: { [key]: e.target.value } },
+                      true,
+                    )
+                  }
+                  placeholder={`Опция: ${key}`}
+                />
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={collection.isActive}
+                  onChange={(e) =>
+                    updateItem(index, { isActive: e.target.checked })
+                  }
+                />
+                Активна
+              </label>
+
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onChange(value.filter((_, i) => i !== index))}
+                className="text-red-500"
+              >
+                <Trash2 className="h-4 w-4" />
+                Удалить
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Page() {
   const [view, setView] = useState<ViewFilter>('trends');
   const [addType, setAddType] = useState<AddType>('trend');
@@ -164,6 +365,11 @@ export default function Page() {
   const updateEffect = useUpdateEffectTemplate();
   const deleteEffect = useDeleteEffectTemplate();
   const uploadEffectCover = useUploadEffectCover();
+  const updateSettings = useUpdateSettings();
+
+  const [collectionsDraft, setCollectionsDraft] = useState<EffectCollection[]>(
+    [],
+  );
 
   const trendItems = useMemo(
     () => trendsQ.data?.pages.flatMap((p: any) => p.items || []) || [],
@@ -212,6 +418,45 @@ export default function Page() {
     if (!effectCoverPreviewUrl) return;
     return () => URL.revokeObjectURL(effectCoverPreviewUrl);
   }, [effectCoverPreviewUrl]);
+
+  useEffect(() => {
+    if (!settingsQ.data) return;
+    const timer = setTimeout(() => {
+      if (view === 'collections_photo') {
+        setCollectionsDraft(
+          JSON.parse(
+            JSON.stringify(settingsQ.data.photoEffectsCollections || []),
+          ) as EffectCollection[],
+        );
+      } else if (view === 'collections_video') {
+        setCollectionsDraft(
+          JSON.parse(
+            JSON.stringify(settingsQ.data.videoEffectsCollections || []),
+          ) as EffectCollection[],
+        );
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [view, settingsQ.data]);
+
+  const handleUploadCollectionCover = async (file: File, index: number) => {
+    const url = await uploadEffectCover.mutateAsync(file);
+    if (!url) return;
+    setCollectionsDraft((prev) => {
+      const next = [...prev];
+      if (!next[index]) return prev;
+      next[index] = { ...next[index], coverUrl: url };
+      return next;
+    });
+  };
+
+  const saveCollections = () => {
+    if (view === 'collections_photo') {
+      updateSettings.mutate({ photoEffectsCollections: collectionsDraft });
+    } else if (view === 'collections_video') {
+      updateSettings.mutate({ videoEffectsCollections: collectionsDraft });
+    }
+  };
 
   const openAdd = () => {
     if (addType === 'trend') {
@@ -441,23 +686,50 @@ export default function Page() {
           )}
         </div>
       ) : view === 'collections_photo' || view === 'collections_video' ? (
-        <div className="rounded-xl border bg-card p-4 space-y-3">
-          {(view === 'collections_photo'
-            ? settingsQ.data?.photoEffectsCollections
-            : settingsQ.data?.videoEffectsCollections
-          )?.map((c) => (
-            <div key={c.id} className="rounded-lg border p-3">
-              <div className="font-medium">{c.title}</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Эффектов: {c.effectIds?.length || 0}
-              </div>
+        <div className="space-y-4">
+          {settingsQ.isLoading ? (
+            <div className="py-12 flex justify-center rounded-xl border bg-card">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
             </div>
-          ))}
-          <div>
-            <Button asChild variant="outline">
-              <Link href="/settings">Редактировать коллекции в настройках</Link>
-            </Button>
-          </div>
+          ) : (
+            <>
+              <CollectionsEditor
+                title={
+                  view === 'collections_photo'
+                    ? 'Коллекции фотоэффектов'
+                    : 'Коллекции видеоэффектов'
+                }
+                subtitle={
+                  view === 'collections_photo'
+                    ? 'Базовые поля, список effectId и опции'
+                    : 'Обложка изображение или видео, effectId и опции'
+                }
+                value={collectionsDraft}
+                onChange={setCollectionsDraft}
+                optionHints={
+                  view === 'collections_photo'
+                    ? ['model', 'orientation']
+                    : ['duration', 'orientation', 'audio']
+                }
+                coverAccept={
+                  view === 'collections_photo' ? 'image/*' : 'image/*,video/*'
+                }
+                onUploadCover={(file: File, index: number) =>
+                  void handleUploadCollectionCover(file, index)
+                }
+                isUploadingCover={uploadEffectCover.isPending}
+              />
+              <Button
+                onClick={saveCollections}
+                disabled={updateSettings.isPending}
+              >
+                {updateSettings.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
+                Сохранить коллекции
+              </Button>
+            </>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border bg-card">

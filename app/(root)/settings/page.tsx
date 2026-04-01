@@ -1,23 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  useSettings,
-  useUpdateSettings,
-  type EffectCollection,
-  useUploadEffectCover,
-} from '@/hooks/useAdmin';
-import {
-  Loader2,
-  Save,
-  ImageIcon,
-  Video,
-  MessageSquare,
-  Plus,
-  Trash2,
-} from 'lucide-react';
+import { useSettings, useUpdateSettings } from '@/hooks/useAdmin';
+import { Loader2, Save, ImageIcon, Video, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ImageHandler } from '@/components/shared/ImageHandler';
 
 type StateKey = 'guest' | 'noModel' | 'hasModel';
 
@@ -32,25 +18,12 @@ type FormState = {
   subscriptionGracePeriodDays: number;
   titlesEn: Record<StateKey, string[]>;
   titlesRu: Record<StateKey, string[]>;
-  photoEffectsCollections: EffectCollection[];
-  videoEffectsCollections: EffectCollection[];
   effectRouting: {
     photo_effect: { models: string[] };
     video_effect: { models: string[] };
     live_photo_template: { models: string[] };
   };
 };
-
-const emptyCollection = (): EffectCollection => ({
-  id: crypto.randomUUID(),
-  title: '',
-  description: '',
-  coverUrl: '',
-  effectIds: [],
-  sortOrder: 0,
-  isActive: true,
-  options: {},
-});
 
 const parseLines = (value: string) =>
   value
@@ -68,177 +41,9 @@ const defaultRouting = {
   },
 };
 
-const CollectionsSection = ({
-  title,
-  subtitle,
-  value,
-  onChange,
-  optionHints,
-  onUploadCover,
-  isUploadingCover,
-}: {
-  title: string;
-  subtitle: string;
-  value: EffectCollection[];
-  onChange: CallableFunction;
-  optionHints: string[];
-  onUploadCover: CallableFunction;
-  isUploadingCover: boolean;
-}) => {
-  const updateItem = (
-    index: number,
-    patch: Partial<EffectCollection>,
-    mergeOptions = false,
-  ) => {
-    onChange(
-      value.map((item, i) => {
-        if (i !== index) return item;
-        if (!mergeOptions) return { ...item, ...patch };
-        return {
-          ...item,
-          ...patch,
-          options: { ...(item.options || {}), ...(patch.options || {}) },
-        };
-      }),
-    );
-  };
-
-  return (
-    <div className="rounded-xl border border-border bg-card p-6 space-y-4 w-full">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="font-medium text-sm uppercase tracking-wider">
-            {title}
-          </h2>
-          <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
-        </div>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => onChange([...value, emptyCollection()])}
-          className="cursor-pointer"
-        >
-          <Plus className="h-4 w-4" />
-          Добавить коллекцию
-        </Button>
-      </div>
-
-      <div className="space-y-4">
-        {value.map((collection, index) => (
-          <div key={collection.id} className="rounded-lg border p-4 space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input
-                value={collection.title}
-                onChange={(e) => updateItem(index, { title: e.target.value })}
-                placeholder="Название коллекции"
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-              <input
-                type="number"
-                value={collection.sortOrder}
-                onChange={(e) =>
-                  updateItem(index, { sortOrder: Number(e.target.value) })
-                }
-                placeholder="Порядок"
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-              <div className="md:col-span-2 space-y-2">
-                <div className="flex flex-wrap items-center gap-3">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      void onUploadCover(file, index);
-                    }}
-                    className="flex h-9 w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                  {isUploadingCover ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  ) : null}
-                </div>
-                {collection.coverUrl ? (
-                  <div className="w-32 h-32 rounded-lg overflow-hidden border">
-                    <ImageHandler
-                      src={collection.coverUrl}
-                      alt={collection.title || 'collection cover'}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ) : null}
-              </div>
-              <textarea
-                rows={2}
-                value={collection.description || ''}
-                onChange={(e) =>
-                  updateItem(index, { description: e.target.value })
-                }
-                placeholder="Описание"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm md:col-span-2"
-              />
-              <textarea
-                rows={3}
-                value={(collection.effectIds || []).join('\n')}
-                onChange={(e) =>
-                  updateItem(index, { effectIds: parseLines(e.target.value) })
-                }
-                placeholder="Список effectId, каждый с новой строки"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm md:col-span-2"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {optionHints.map((key) => (
-                <input
-                  key={key}
-                  value={collection.options?.[key] || ''}
-                  onChange={(e) =>
-                    updateItem(
-                      index,
-                      { options: { [key]: e.target.value } },
-                      true,
-                    )
-                  }
-                  placeholder={`Опция: ${key}`}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                />
-              ))}
-            </div>
-
-            <div className="flex items-center justify-between">
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={collection.isActive}
-                  onChange={(e) =>
-                    updateItem(index, { isActive: e.target.checked })
-                  }
-                />
-                Активна
-              </label>
-
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => onChange(value.filter((_, i) => i !== index))}
-                className="cursor-pointer text-red-500"
-              >
-                <Trash2 className="h-4 w-4" />
-                Удалить
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 const Page = () => {
   const { data: settings, isLoading } = useSettings();
   const update = useUpdateSettings();
-  const uploadCover = useUploadEffectCover();
 
   const [form, setForm] = useState<FormState>({
     imageCost: 15,
@@ -261,8 +66,6 @@ const Page = () => {
       noModel: [] as string[],
       hasModel: [] as string[],
     },
-    photoEffectsCollections: [],
-    videoEffectsCollections: [],
     effectRouting: defaultRouting,
   });
 
@@ -278,8 +81,6 @@ const Page = () => {
           trialTokens: settings.trialTokens,
           trialPeriodDays: settings.trialPeriodDays,
           subscriptionGracePeriodDays: settings.subscriptionGracePeriodDays,
-          photoEffectsCollections: settings.photoEffectsCollections || [],
-          videoEffectsCollections: settings.videoEffectsCollections || [],
           effectRouting: settings.effectRouting || defaultRouting,
 
           titlesEn: settings.titlesEn || {
@@ -303,25 +104,6 @@ const Page = () => {
 
   const handleSave = () => {
     update.mutate(form as any);
-  };
-
-  const handleUploadCollectionCover = async (
-    file: File,
-    index: number,
-    kind: 'photo' | 'video',
-  ) => {
-    const url = await uploadCover.mutateAsync(file);
-    if (!url) return;
-    setForm((prev) => {
-      const key =
-        kind === 'photo'
-          ? 'photoEffectsCollections'
-          : 'videoEffectsCollections';
-      const next = [...prev[key]];
-      if (!next[index]) return prev;
-      next[index] = { ...next[index], coverUrl: url };
-      return { ...prev, [key]: next };
-    });
   };
 
   if (isLoading) {
@@ -562,20 +344,6 @@ const Page = () => {
         </div>
       </div>
 
-      <CollectionsSection
-        title="Коллекции фотоэффектов"
-        subtitle="Единая форма: базовые поля, список effectId и опции"
-        value={form.photoEffectsCollections}
-        onChange={(next: EffectCollection[]) =>
-          setForm((f) => ({ ...f, photoEffectsCollections: next }))
-        }
-        optionHints={['model', 'orientation']}
-        onUploadCover={(file: File, index: number) =>
-          handleUploadCollectionCover(file, index, 'photo')
-        }
-        isUploadingCover={uploadCover.isPending}
-      />
-
       <div className="rounded-xl border border-border bg-card p-6 space-y-4 w-full">
         <h2 className="font-medium text-sm uppercase tracking-wider">
           Приоритет моделей и фолбеков
@@ -607,20 +375,6 @@ const Page = () => {
           </div>
         ))}
       </div>
-
-      <CollectionsSection
-        title="Коллекции видеоэффектов"
-        subtitle="Та же форма, с видео-ориентированными опциями"
-        value={form.videoEffectsCollections}
-        onChange={(next: EffectCollection[]) =>
-          setForm((f) => ({ ...f, videoEffectsCollections: next }))
-        }
-        optionHints={['duration', 'orientation', 'audio']}
-        onUploadCover={(file: File, index: number) =>
-          handleUploadCollectionCover(file, index, 'video')
-        }
-        isUploadingCover={uploadCover.isPending}
-      />
 
       <div className="rounded-xl border p-6 space-y-4 w-full bg-card">
         <h2 className="text-sm font-medium">Typewriter (RU)</h2>
