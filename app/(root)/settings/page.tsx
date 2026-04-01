@@ -34,6 +34,11 @@ type FormState = {
   titlesRu: Record<StateKey, string[]>;
   photoEffectsCollections: EffectCollection[];
   videoEffectsCollections: EffectCollection[];
+  effectRouting: {
+    photo_effect: { models: string[] };
+    video_effect: { models: string[] };
+    live_photo_template: { models: string[] };
+  };
 };
 
 const emptyCollection = (): EffectCollection => ({
@@ -52,6 +57,16 @@ const parseLines = (value: string) =>
     .split('\n')
     .map((v) => v.trim())
     .filter(Boolean);
+
+const defaultRouting = {
+  photo_effect: { models: ['nano-banana-2', 'nano-banana-pro'] },
+  video_effect: {
+    models: ['kling', 'higgsfield-video', 'minimax-hailuo', 'grok-video'],
+  },
+  live_photo_template: {
+    models: ['kling', 'higgsfield-video', 'minimax-hailuo', 'grok-video'],
+  },
+};
 
 const CollectionsSection = ({
   title,
@@ -248,6 +263,7 @@ const Page = () => {
     },
     photoEffectsCollections: [],
     videoEffectsCollections: [],
+    effectRouting: defaultRouting,
   });
 
   useEffect(() => {
@@ -264,6 +280,7 @@ const Page = () => {
           subscriptionGracePeriodDays: settings.subscriptionGracePeriodDays,
           photoEffectsCollections: settings.photoEffectsCollections || [],
           videoEffectsCollections: settings.videoEffectsCollections || [],
+          effectRouting: settings.effectRouting || defaultRouting,
 
           titlesEn: settings.titlesEn || {
             guest: [],
@@ -558,6 +575,38 @@ const Page = () => {
         }
         isUploadingCover={uploadCover.isPending}
       />
+
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4 w-full">
+        <h2 className="font-medium text-sm uppercase tracking-wider">
+          Приоритет моделей и фолбеков
+        </h2>
+        {(
+          [
+            ['photo_effect', 'Фотоэффекты'],
+            ['video_effect', 'Видеоэффекты'],
+            ['live_photo_template', 'Живое фото'],
+          ] as const
+        ).map(([key, label]) => (
+          <div key={key} className="rounded-lg border p-4 space-y-2">
+            <div className="font-medium">{label}</div>
+            <textarea
+              rows={3}
+              value={(form.effectRouting?.[key]?.models || []).join('\n')}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  effectRouting: {
+                    ...f.effectRouting,
+                    [key]: { models: parseLines(e.target.value) },
+                  },
+                }))
+              }
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              placeholder="Одна модель на строку, сверху вниз = приоритет"
+            />
+          </div>
+        ))}
+      </div>
 
       <CollectionsSection
         title="Коллекции видеоэффектов"

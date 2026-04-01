@@ -36,26 +36,53 @@ type FormState = {
   name: string;
   description: string;
   type: AdminEffectTemplateType;
-  provider: string;
+  model: string;
   coverUrl: string;
   defaultPrompt: string;
-  costTokens: string;
-  sortOrder: string;
   isActive: boolean;
-  modelParams: string;
 };
 
-const emptyForm = (type: AdminEffectTemplateType): FormState => ({
+const MODEL_OPTIONS: Record<AdminEffectTemplateType, string[]> = {
+  photo_effect: ['nano-banana-2', 'nano-banana-pro'],
+  video_effect: ['higgsfield-video', 'kling', 'minimax-hailuo', 'grok-video'],
+  live_photo_template: [
+    'higgsfield-video',
+    'kling',
+    'minimax-hailuo',
+    'grok-video',
+  ],
+};
+
+const MODEL_PROVIDER_MAP: Record<string, string> = {
+  'nano-banana-2': 'nano',
+  'nano-banana-pro': 'nano-pro',
+  'higgsfield-video': 'higgsfield',
+  kling: 'kling',
+  'minimax-hailuo': 'hailuo/minimax-2.3',
+  'grok-video': 'grok-video',
+};
+
+const detectModel = (item: AdminEffectTemplate): string => {
+  const raw = item.modelParams?.model;
+  if (typeof raw === 'string' && raw.trim()) return raw.trim();
+  if (item.type === 'photo_effect') return 'nano-banana-2';
+  return 'kling';
+};
+
+const isVideoUrl = (url: string) =>
+  /\.(mp4|mov|webm|mkv)(\?.*)?$/i.test(url.split('?')[0]);
+
+const emptyForm = (
+  type: AdminEffectTemplateType,
+  model?: string,
+): FormState => ({
   name: '',
   description: '',
   type,
-  provider: '',
+  model: model || MODEL_OPTIONS[type][0],
   coverUrl: '',
   defaultPrompt: '',
-  costTokens: '',
-  sortOrder: '0',
   isActive: true,
-  modelParams: '{}',
 });
 
 const typeLabel: Record<AdminEffectTemplateType, string> = {
@@ -70,6 +97,7 @@ const Page = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AdminEffectTemplate | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm(activeType));
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const { data, isLoading } = useEffectTemplates(activeType);
   const createTemplate = useCreateEffectTemplate();
@@ -93,9 +121,31 @@ const Page = () => {
     [data],
   );
 
+  const moveTemplate = async (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    const list = [...sortedData];
+    const fromIndex = list.findIndex((x) => x.id === fromId);
+    const toIndex = list.findIndex((x) => x.id === toId);
+    if (fromIndex < 0 || toIndex < 0) return;
+    const [moved] = list.splice(fromIndex, 1);
+    list.splice(toIndex, 0, moved);
+    const updates = list.map((item, index) => ({
+      id: item.id,
+      sortOrder: index,
+    }));
+    for (const u of updates) {
+      const original = sortedData.find((x) => x.id === u.id)?.sortOrder ?? 0;
+      if (original === u.sortOrder) continue;
+      await updateTemplate.mutateAsync({
+        id: u.id,
+        payload: { sortOrder: u.sortOrder },
+      });
+    }
+  };
+
   const openCreate = () => {
     setEditing(null);
-    setForm(emptyForm(activeType));
+    setForm(emptyForm(activeType, MODEL_OPTIONS[activeType][0]));
     setDialogOpen(true);
   };
 
@@ -105,38 +155,33 @@ const Page = () => {
       name: item.name || '',
       description: item.description || '',
       type: item.type,
-      provider: item.provider || '',
+      model: detectModel(item),
       coverUrl: item.coverUrl || '',
       defaultPrompt: item.defaultPrompt || '',
-      costTokens:
-        typeof item.costTokens === 'number' ? String(item.costTokens) : '',
-      sortOrder: String(item.sortOrder ?? 0),
       isActive: item.isActive,
-      modelParams: JSON.stringify(item.modelParams || {}, null, 2),
     });
     setDialogOpen(true);
   };
 
   const submit = () => {
-    let parsedModelParams: Record<string, unknown> | null = null;
-    try {
-      const value = form.modelParams.trim();
-      parsedModelParams = value ? (JSON.parse(value) as Record<string, unknown>) : null;
-    } catch {
-      toast.error('Model Params должен быть валидным JSON');
+    if (!form.name.trim()) {
+      toast.error('Заполните название');
       return;
     }
+
+    const baseParams =
+      editing?.modelParams && typeof editing.modelParams === 'object'
+        ? editing.modelParams
+        : {};
 
     const payload: Partial<AdminEffectTemplate> = {
       name: form.name.trim(),
       description: form.description.trim() || null,
       type: form.type,
-      provider: form.provider.trim(),
+      provider: MODEL_PROVIDER_MAP[form.model] || MODEL_PROVIDER_MAP.kling,
       coverUrl: form.coverUrl.trim() || null,
       defaultPrompt: form.defaultPrompt.trim() || null,
-      modelParams: parsedModelParams,
-      costTokens: form.costTokens.trim() ? Number(form.costTokens) : null,
-      sortOrder: Number(form.sortOrder) || 0,
+      modelParams: { ...baseParams, model: form.model },
       isActive: form.isActive,
     };
 
@@ -179,11 +224,9 @@ const Page = () => {
       </div>
 
       <div className="rounded-xl border bg-card">
-        <div className="grid grid-cols-[1.8fr_1fr_.8fr_.8fr_1fr] px-4 py-3 text-xs uppercase text-muted-foreground border-b">
+        <div className="grid grid-cols-[2fr_1fr_1fr] px-4 py-3 text-xs uppercase text-muted-foreground border-b">
           <div>Название</div>
-          <div>Провайдер</div>
-          <div>Токены</div>
-          <div>Порядок</div>
+          <div>Модель</div>
           <div className="text-right">Действия</div>
         </div>
         {isLoading ? (
@@ -198,7 +241,15 @@ const Page = () => {
           sortedData.map((item) => (
             <div
               key={item.id}
-              className="grid grid-cols-[1.8fr_1fr_.8fr_.8fr_1fr] items-center px-4 py-3 border-b last:border-b-0"
+              className="grid grid-cols-[2fr_1fr_1fr] items-center px-4 py-3 border-b last:border-b-0"
+              draggable
+              onDragStart={() => setDraggingId(item.id)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={async () => {
+                if (!draggingId) return;
+                await moveTemplate(draggingId, item.id);
+                setDraggingId(null);
+              }}
             >
               <div>
                 <div className="font-medium">{item.name}</div>
@@ -206,11 +257,13 @@ const Page = () => {
                   {item.description || '—'}
                 </div>
               </div>
-              <div className="text-sm">{item.provider}</div>
-              <div className="text-sm">{item.costTokens ?? '—'}</div>
-              <div className="text-sm">{item.sortOrder ?? 0}</div>
+              <div className="text-sm">{detectModel(item)}</div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => openEdit(item)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openEdit(item)}
+                >
                   <Edit className="w-4 h-4" />
                 </Button>
                 <Button
@@ -240,26 +293,44 @@ const Page = () => {
                 <Label>Название</Label>
                 <Input
                   value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, name: e.target.value }))
+                  }
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Провайдер</Label>
-                <Input
-                  value={form.provider}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, provider: e.target.value }))
+                <Label>Модель</Label>
+                <Select
+                  value={form.model}
+                  onValueChange={(value) =>
+                    setForm((f) => ({ ...f, model: value }))
                   }
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MODEL_OPTIONS[form.type].map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {model}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Обложка</Label>
+              <Label>Превью</Label>
               <div className="flex flex-wrap items-center gap-3">
                 <Input
                   type="file"
-                  accept="image/*"
+                  accept={
+                    form.type === 'video_effect' ||
+                    form.type === 'live_photo_template'
+                      ? 'image/*,video/*'
+                      : 'image/*'
+                  }
                   className="max-w-sm"
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
@@ -277,22 +348,37 @@ const Page = () => {
               </div>
               {form.coverUrl ? (
                 <div className="rounded-lg border overflow-hidden w-40 h-40">
-                  <ImageHandler
-                    src={form.coverUrl}
-                    alt="cover"
-                    className="w-full h-full object-cover"
-                  />
+                  {isVideoUrl(form.coverUrl) ? (
+                    <video
+                      src={form.coverUrl}
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                    />
+                  ) : (
+                    <ImageHandler
+                      src={form.coverUrl}
+                      alt="cover"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
                 </div>
               ) : null}
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <div className="space-y-1.5">
                 <Label>Тип</Label>
                 <Select
                   value={form.type}
                   onValueChange={(value: AdminEffectTemplateType) =>
-                    setForm((f) => ({ ...f, type: value }))
+                    setForm((f) => ({
+                      ...f,
+                      type: value,
+                      model: MODEL_OPTIONS[value][0],
+                    }))
                   }
                 >
                   <SelectTrigger>
@@ -301,29 +387,11 @@ const Page = () => {
                   <SelectContent>
                     <SelectItem value="photo_effect">Фотоэффект</SelectItem>
                     <SelectItem value="video_effect">Видеоэффект</SelectItem>
-                    <SelectItem value="live_photo_template">Живое фото</SelectItem>
+                    <SelectItem value="live_photo_template">
+                      Живое фото
+                    </SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Токены</Label>
-                <Input
-                  type="number"
-                  value={form.costTokens}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, costTokens: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Порядок</Label>
-                <Input
-                  type="number"
-                  value={form.sortOrder}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, sortOrder: e.target.value }))
-                  }
-                />
               </div>
             </div>
 
@@ -345,17 +413,6 @@ const Page = () => {
                 value={form.defaultPrompt}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, defaultPrompt: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Model Params (JSON)</Label>
-              <Textarea
-                rows={8}
-                value={form.modelParams}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, modelParams: e.target.value }))
                 }
               />
             </div>

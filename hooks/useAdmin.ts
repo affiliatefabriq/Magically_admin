@@ -96,6 +96,11 @@ export const useAnalytics = (range?: TimeRange) => {
 export interface Settings {
   photoEffectsCollections: EffectCollection[];
   videoEffectsCollections: EffectCollection[];
+  effectRouting: {
+    photo_effect: { models: string[] };
+    video_effect: { models: string[] };
+    live_photo_template: { models: string[] };
+  };
   imageCost: number;
   videoCost: number;
   aiCost1K: number;
@@ -228,7 +233,7 @@ export const useUploadEffectCover = () =>
   useMutation({
     mutationFn: async (file: File) => {
       const fd = new FormData();
-      fd.append('image', file);
+      fd.append('file', file);
       const { data } = await api.post('/admin/uploads/effect-cover', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
