@@ -94,6 +94,24 @@ export const useAnalytics = (range?: TimeRange) => {
 
 // --- Settings ---
 export interface Settings {
+  lkTextsEn: {
+    exploreCommunityTitle: string;
+    exploreCommunityDescription: string;
+    payTitle: string;
+    payDescription: string;
+    payAmountLabel: string;
+    payButtonLabel: string;
+    payCreateNewButton: string;
+  };
+  lkTextsRu: {
+    exploreCommunityTitle: string;
+    exploreCommunityDescription: string;
+    payTitle: string;
+    payDescription: string;
+    payAmountLabel: string;
+    payButtonLabel: string;
+    payCreateNewButton: string;
+  };
   photoEffectsCollections: EffectCollection[];
   videoEffectsCollections: EffectCollection[];
   effectRouting: {
@@ -103,6 +121,8 @@ export interface Settings {
   };
   imageCost: number;
   videoCost: number;
+  photoEffectCost: number;
+  videoEffectCost: number;
   aiCost1K: number;
   aiCost2K: number;
   systemPrompt: string;
@@ -138,6 +158,12 @@ export interface AdminEffectTemplate {
   costTokens?: number | null;
   isActive: boolean;
   sortOrder: number;
+  publishToTrends?: boolean;
+  trendGender?: 'male' | 'female' | 'both';
+  trendIsHot?: boolean;
+  trendCoverText?: string;
+  trendContent?: string;
+  trendImageSetUrls?: string[];
 }
 
 export interface EffectCollection {

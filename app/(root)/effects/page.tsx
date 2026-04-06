@@ -39,6 +39,12 @@ type FormState = {
   model: string;
   coverUrl: string;
   defaultPrompt: string;
+  trendContent: string;
+  trendCoverText: string;
+  trendGender: 'male' | 'female' | 'both';
+  trendIsHot: boolean;
+  publishToTrends: boolean;
+  trendImageSetUrls: string[];
   isActive: boolean;
 };
 
@@ -82,6 +88,12 @@ const emptyForm = (
   model: model || MODEL_OPTIONS[type][0],
   coverUrl: '',
   defaultPrompt: '',
+  trendContent: '',
+  trendCoverText: '',
+  trendGender: 'both',
+  trendIsHot: false,
+  publishToTrends: false,
+  trendImageSetUrls: [],
   isActive: true,
 });
 
@@ -158,6 +170,12 @@ const Page = () => {
       model: detectModel(item),
       coverUrl: item.coverUrl || '',
       defaultPrompt: item.defaultPrompt || '',
+      trendContent: item.trendContent || '',
+      trendCoverText: item.trendCoverText || '',
+      trendGender: item.trendGender || 'both',
+      trendIsHot: Boolean(item.trendIsHot),
+      publishToTrends: Boolean(item.publishToTrends),
+      trendImageSetUrls: item.trendImageSetUrls || [],
       isActive: item.isActive,
     });
     setDialogOpen(true);
@@ -181,6 +199,12 @@ const Page = () => {
       provider: MODEL_PROVIDER_MAP[form.model] || MODEL_PROVIDER_MAP.kling,
       coverUrl: form.coverUrl.trim() || null,
       defaultPrompt: form.defaultPrompt.trim() || null,
+      publishToTrends: form.publishToTrends,
+      trendContent: form.trendContent.trim() || null,
+      trendCoverText: form.trendCoverText.trim() || null,
+      trendGender: form.trendGender,
+      trendIsHot: form.trendIsHot,
+      trendImageSetUrls: form.trendImageSetUrls,
       modelParams: { ...baseParams, model: form.model },
       isActive: form.isActive,
     };
@@ -368,6 +392,64 @@ const Page = () => {
               ) : null}
             </div>
 
+            <div className="space-y-2">
+              <Label>Фото внизу тренда</Label>
+              <div className="flex flex-wrap items-center gap-3">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="max-w-sm"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (!files.length) return;
+                    const uploaded: string[] = [];
+                    for (const file of files) {
+                      const url = await uploadCover.mutateAsync(file);
+                      if (url) uploaded.push(url);
+                    }
+                    if (uploaded.length) {
+                      setForm((f) => ({
+                        ...f,
+                        trendImageSetUrls: [...f.trendImageSetUrls, ...uploaded],
+                      }));
+                      toast.success('Фото добавлены');
+                    }
+                  }}
+                />
+                {uploadCover.isPending ? (
+                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                ) : null}
+              </div>
+              {form.trendImageSetUrls.length ? (
+                <div className="grid grid-cols-4 gap-2">
+                  {form.trendImageSetUrls.map((url, idx) => (
+                    <div key={`${url}-${idx}`} className="relative">
+                      <ImageHandler
+                        src={url}
+                        alt="trend image"
+                        className="w-full h-24 rounded-md object-cover border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            trendImageSetUrls: f.trendImageSetUrls.filter(
+                              (_, i) => i !== idx
+                            ),
+                          }))
+                        }
+                        className="absolute top-1 right-1 rounded-full bg-black/70 text-white text-xs px-1.5"
+                      >
+                        x
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
             <div className="grid grid-cols-1 gap-3">
               <div className="space-y-1.5">
                 <Label>Тип</Label>
@@ -416,6 +498,71 @@ const Page = () => {
                 }
               />
             </div>
+
+            <div className="space-y-1.5">
+              <Label>Промпт тренда</Label>
+              <Textarea
+                rows={3}
+                value={form.trendContent}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, trendContent: e.target.value }))
+                }
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Текст на обложке тренда</Label>
+              <Input
+                value={form.trendCoverText}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, trendCoverText: e.target.value }))
+                }
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Пол для тренда</Label>
+                <Select
+                  value={form.trendGender}
+                  onValueChange={(value: 'male' | 'female' | 'both') =>
+                    setForm((f) => ({ ...f, trendGender: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Мужской</SelectItem>
+                    <SelectItem value="female">Женский</SelectItem>
+                    <SelectItem value="both">Оба</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="inline-flex items-center gap-2 text-sm pt-8">
+                  <input
+                    type="checkbox"
+                    checked={form.trendIsHot}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, trendIsHot: e.target.checked }))
+                    }
+                  />
+                  Горячий тренд
+                </Label>
+              </div>
+            </div>
+
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.publishToTrends}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, publishToTrends: e.target.checked }))
+                }
+              />
+              Добавить в тренды на главную
+            </label>
 
             <label className="inline-flex items-center gap-2 text-sm">
               <input

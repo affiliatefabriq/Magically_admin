@@ -10,6 +10,8 @@ type StateKey = 'guest' | 'noModel' | 'hasModel';
 type FormState = {
   imageCost: number;
   videoCost: number;
+  photoEffectCost: number;
+  videoEffectCost: number;
   aiCost1K: number;
   aiCost2K: number;
   systemPrompt: string;
@@ -18,6 +20,24 @@ type FormState = {
   subscriptionGracePeriodDays: number;
   titlesEn: Record<StateKey, string[]>;
   titlesRu: Record<StateKey, string[]>;
+  lkTextsEn: {
+    exploreCommunityTitle: string;
+    exploreCommunityDescription: string;
+    payTitle: string;
+    payDescription: string;
+    payAmountLabel: string;
+    payButtonLabel: string;
+    payCreateNewButton: string;
+  };
+  lkTextsRu: {
+    exploreCommunityTitle: string;
+    exploreCommunityDescription: string;
+    payTitle: string;
+    payDescription: string;
+    payAmountLabel: string;
+    payButtonLabel: string;
+    payCreateNewButton: string;
+  };
   effectRouting: {
     photo_effect: { models: string[] };
     video_effect: { models: string[] };
@@ -48,6 +68,8 @@ const Page = () => {
   const [form, setForm] = useState<FormState>({
     imageCost: 15,
     videoCost: 40,
+    photoEffectCost: 15,
+    videoEffectCost: 40,
     aiCost1K: 15,
     aiCost2K: 20,
     systemPrompt: '',
@@ -66,6 +88,24 @@ const Page = () => {
       noModel: [] as string[],
       hasModel: [] as string[],
     },
+    lkTextsEn: {
+      exploreCommunityTitle: '',
+      exploreCommunityDescription: '',
+      payTitle: '',
+      payDescription: '',
+      payAmountLabel: '',
+      payButtonLabel: '',
+      payCreateNewButton: '',
+    },
+    lkTextsRu: {
+      exploreCommunityTitle: '',
+      exploreCommunityDescription: '',
+      payTitle: '',
+      payDescription: '',
+      payAmountLabel: '',
+      payButtonLabel: '',
+      payCreateNewButton: '',
+    },
     effectRouting: defaultRouting,
   });
 
@@ -75,6 +115,8 @@ const Page = () => {
         setForm({
           imageCost: settings.imageCost,
           videoCost: settings.videoCost,
+          photoEffectCost: settings.photoEffectCost ?? 15,
+          videoEffectCost: settings.videoEffectCost ?? 40,
           aiCost1K: settings.aiCost1K,
           aiCost2K: settings.aiCost2K,
           systemPrompt: settings.systemPrompt,
@@ -93,6 +135,24 @@ const Page = () => {
             guest: [],
             noModel: [],
             hasModel: [],
+          },
+          lkTextsEn: settings.lkTextsEn || {
+            exploreCommunityTitle: '',
+            exploreCommunityDescription: '',
+            payTitle: '',
+            payDescription: '',
+            payAmountLabel: '',
+            payButtonLabel: '',
+            payCreateNewButton: '',
+          },
+          lkTextsRu: settings.lkTextsRu || {
+            exploreCommunityTitle: '',
+            exploreCommunityDescription: '',
+            payTitle: '',
+            payDescription: '',
+            payAmountLabel: '',
+            payButtonLabel: '',
+            payCreateNewButton: '',
           },
         });
       }, 0);
@@ -166,6 +226,44 @@ const Page = () => {
 
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium">
+                <ImageIcon className="h-4 w-4 text-emerald-400" />
+                Фотоэффект (токенов)
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={form.photoEffectCost}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    photoEffectCost: Number(e.target.value),
+                  }))
+                }
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <Video className="h-4 w-4 text-cyan-400" />
+                Видеоэффект (токенов)
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={form.videoEffectCost}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    videoEffectCost: Number(e.target.value),
+                  }))
+                }
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
                 <ImageIcon className="h-4 w-4 text-blue-400" />
                 AI 1K Cost
               </label>
@@ -211,6 +309,24 @@ const Page = () => {
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">
                 за видео
+              </div>
+            </div>
+            <div className="h-8 w-px bg-border" />
+            <div className="text-center">
+              <div className="text-2xl font-bold text-emerald-400">
+                {form.photoEffectCost}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                за фотоэффект
+              </div>
+            </div>
+            <div className="h-8 w-px bg-border" />
+            <div className="text-center">
+              <div className="text-2xl font-bold text-cyan-400">
+                {form.videoEffectCost}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                за видеоэффект
               </div>
             </div>
             <div className="h-8 w-px bg-border" />
@@ -418,6 +534,64 @@ const Page = () => {
                     ...f.titlesEn,
                     [state]: e.target.value.split('\n'),
                   },
+                }))
+              }
+              className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-xl border p-6 space-y-4 w-full bg-card">
+        <h2 className="text-sm font-medium">Тексты ЛК (RU)</h2>
+        {(
+          [
+            ['exploreCommunityTitle', 'Лента: заголовок'],
+            ['exploreCommunityDescription', 'Лента: описание'],
+            ['payTitle', 'Оплата: заголовок'],
+            ['payDescription', 'Оплата: описание'],
+            ['payAmountLabel', 'Оплата: подпись суммы'],
+            ['payButtonLabel', 'Оплата: кнопка оплатить'],
+            ['payCreateNewButton', 'Оплата: кнопка нового платежа'],
+          ] as const
+        ).map(([key, label]) => (
+          <div key={key} className="space-y-2">
+            <label className="text-xs text-muted-foreground">{label}</label>
+            <input
+              value={form.lkTextsRu[key] || ''}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  lkTextsRu: { ...f.lkTextsRu, [key]: e.target.value },
+                }))
+              }
+              className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-xl border p-6 space-y-4 w-full bg-card">
+        <h2 className="text-sm font-medium">Тексты ЛК (EN)</h2>
+        {(
+          [
+            ['exploreCommunityTitle', 'Feed: title'],
+            ['exploreCommunityDescription', 'Feed: description'],
+            ['payTitle', 'Pay: title'],
+            ['payDescription', 'Pay: description'],
+            ['payAmountLabel', 'Pay: amount label'],
+            ['payButtonLabel', 'Pay: pay button'],
+            ['payCreateNewButton', 'Pay: create new payment button'],
+          ] as const
+        ).map(([key, label]) => (
+          <div key={key} className="space-y-2">
+            <label className="text-xs text-muted-foreground">{label}</label>
+            <input
+              value={form.lkTextsEn[key] || ''}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  lkTextsEn: { ...f.lkTextsEn, [key]: e.target.value },
                 }))
               }
               className="w-full border rounded-md px-3 py-2 text-sm bg-background"
