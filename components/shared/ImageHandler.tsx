@@ -1,5 +1,3 @@
-import Image from 'next/image';
-
 import { useState } from 'react';
 import { ImageIcon } from 'lucide-react';
 import { getImageUrl } from '@/lib/utils';
@@ -31,11 +29,10 @@ export const ImageHandler = ({
   const finalImageUrl = getImageUrl(src);
 
   return (
-    <Image
-      src={finalImageUrl!}
-      width={1024}
-      height={1024}
+    <img
+      src={finalImageUrl}
       alt={alt}
+      loading="lazy"
       className={`rounded-xl w-full h-auto ${className}`}
       onError={() => setError(true)}
       onClick={onClick}

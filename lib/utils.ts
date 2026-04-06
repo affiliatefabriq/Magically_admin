@@ -26,23 +26,35 @@ export function formatDate(date: string | Date): string {
 }
 
 export const getImageUrl = (src: string) => {
-  if (!src) return 'no src';
+  if (!src) return '';
+
+  const normalizedSrc = src.trim();
+  if (!normalizedSrc) return '';
+
+  if (
+    normalizedSrc.startsWith('http://') ||
+    normalizedSrc.startsWith('https://')
+  ) {
+    return normalizedSrc;
+  }
 
   if (S3 === 'true') {
-    const path = `${S3_URL}/${BUCKET_NAME}/${src}`;
-
-    return path;
+    if (S3_URL && BUCKET_NAME) {
+      const key = normalizedSrc.startsWith('/')
+        ? normalizedSrc.slice(1)
+        : normalizedSrc;
+      return `${S3_URL}/${BUCKET_NAME}/${key}`;
+    }
   }
 
-  if (src.startsWith('http://localhost')) {
-    return src;
+  if (normalizedSrc.startsWith('/')) {
+    if (API_URL) return `${API_URL}${normalizedSrc}`;
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}${normalizedSrc}`;
+    }
+    return normalizedSrc;
   }
 
-  if (src.startsWith('http://') || src.startsWith('https://')) {
-    return src;
-  }
-
-  const fullUrl = `${API_URL}${src}`;
-  console.log(fullUrl);
-  return fullUrl;
+  if (API_URL) return `${API_URL}/${normalizedSrc}`;
+  return normalizedSrc;
 };
