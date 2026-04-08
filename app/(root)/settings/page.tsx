@@ -28,6 +28,8 @@ type FormState = {
     payAmountLabel: string;
     payButtonLabel: string;
     payCreateNewButton: string;
+    profileTitle: string;
+    profileDescription: string;
   };
   lkTextsRu: {
     exploreCommunityTitle: string;
@@ -37,6 +39,8 @@ type FormState = {
     payAmountLabel: string;
     payButtonLabel: string;
     payCreateNewButton: string;
+    profileTitle: string;
+    profileDescription: string;
   };
   effectRouting: {
     photo_effect: { models: string[] };
@@ -96,6 +100,8 @@ const Page = () => {
       payAmountLabel: '',
       payButtonLabel: '',
       payCreateNewButton: '',
+      profileTitle: '',
+      profileDescription: '',
     },
     lkTextsRu: {
       exploreCommunityTitle: '',
@@ -105,6 +111,8 @@ const Page = () => {
       payAmountLabel: '',
       payButtonLabel: '',
       payCreateNewButton: '',
+      profileTitle: '',
+      profileDescription: '',
     },
     effectRouting: defaultRouting,
   });
@@ -144,6 +152,8 @@ const Page = () => {
             payAmountLabel: '',
             payButtonLabel: '',
             payCreateNewButton: '',
+            profileTitle: '',
+            profileDescription: '',
           },
           lkTextsRu: settings.lkTextsRu || {
             exploreCommunityTitle: '',
@@ -153,6 +163,8 @@ const Page = () => {
             payAmountLabel: '',
             payButtonLabel: '',
             payCreateNewButton: '',
+            profileTitle: '',
+            profileDescription: '',
           },
         });
       }, 0);
@@ -553,6 +565,8 @@ const Page = () => {
             ['payAmountLabel', 'Оплата: подпись суммы'],
             ['payButtonLabel', 'Оплата: кнопка оплатить'],
             ['payCreateNewButton', 'Оплата: кнопка нового платежа'],
+            ['profileTitle', 'Профиль: заголовок'],
+            ['profileDescription', 'Профиль: описание'],
           ] as const
         ).map(([key, label]) => (
           <div key={key} className="space-y-2">
@@ -582,6 +596,8 @@ const Page = () => {
             ['payAmountLabel', 'Pay: amount label'],
             ['payButtonLabel', 'Pay: pay button'],
             ['payCreateNewButton', 'Pay: create new payment button'],
+            ['profileTitle', 'Profile: title'],
+            ['profileDescription', 'Profile: description'],
           ] as const
         ).map(([key, label]) => (
           <div key={key} className="space-y-2">

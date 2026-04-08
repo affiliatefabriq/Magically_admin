@@ -102,6 +102,8 @@ export interface Settings {
     payAmountLabel: string;
     payButtonLabel: string;
     payCreateNewButton: string;
+    profileTitle: string;
+    profileDescription: string;
   };
   lkTextsRu: {
     exploreCommunityTitle: string;
@@ -111,6 +113,8 @@ export interface Settings {
     payAmountLabel: string;
     payButtonLabel: string;
     payCreateNewButton: string;
+    profileTitle: string;
+    profileDescription: string;
   };
   photoEffectsCollections: EffectCollection[];
   videoEffectsCollections: EffectCollection[];
