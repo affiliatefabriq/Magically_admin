@@ -130,6 +130,8 @@ export interface Settings {
   aiCost1K: number;
   aiCost2K: number;
   systemPrompt: string;
+  nanoBananaSystemPrompt: string;
+  fluxSystemPrompt: string;
   trialTokens: number;
   trialPeriodDays: number;
   subscriptionGracePeriodDays: number;

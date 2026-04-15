@@ -15,6 +15,8 @@ type FormState = {
   aiCost1K: number;
   aiCost2K: number;
   systemPrompt: string;
+  nanoBananaSystemPrompt: string;
+  fluxSystemPrompt: string;
   trialTokens: number;
   trialPeriodDays: number;
   subscriptionGracePeriodDays: number;
@@ -77,6 +79,8 @@ const Page = () => {
     aiCost1K: 15,
     aiCost2K: 20,
     systemPrompt: '',
+    nanoBananaSystemPrompt: '',
+    fluxSystemPrompt: '',
     trialTokens: 50,
     trialPeriodDays: 7,
     subscriptionGracePeriodDays: 3,
@@ -128,6 +132,8 @@ const Page = () => {
           aiCost1K: settings.aiCost1K,
           aiCost2K: settings.aiCost2K,
           systemPrompt: settings.systemPrompt,
+          nanoBananaSystemPrompt: settings.nanoBananaSystemPrompt || '',
+          fluxSystemPrompt: settings.fluxSystemPrompt || '',
           trialTokens: settings.trialTokens,
           trialPeriodDays: settings.trialPeriodDays,
           subscriptionGracePeriodDays: settings.subscriptionGracePeriodDays,
@@ -452,22 +458,51 @@ const Page = () => {
               Системный промпт
             </h2>
             <p className="text-xs text-muted-foreground mt-1">
-              Базовый промпт, который добавляется к каждой генерации изображений
+              Отдельные базовые промпты для разных ИИ-моделей фото
             </p>
           </div>
 
-          <textarea
-            value={form.systemPrompt}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, systemPrompt: e.target.value }))
-            }
-            rows={10}
-            placeholder="Photorealistic, high quality, 8k resolution..."
-            className="flex w-full rounded-md border border-input bg-background px-3 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none font-mono"
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Nano Banana: системный промпт
+            </label>
+            <textarea
+              value={form.nanoBananaSystemPrompt}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  nanoBananaSystemPrompt: e.target.value,
+                }))
+              }
+              rows={6}
+              placeholder="Base prompt for nano banana..."
+              className="flex w-full rounded-md border border-input bg-background px-3 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none font-mono"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Flux: системный промпт
+            </label>
+            <textarea
+              value={form.fluxSystemPrompt}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  fluxSystemPrompt: e.target.value,
+                }))
+              }
+              rows={6}
+              placeholder="Base prompt for flux..."
+              className="flex w-full rounded-md border border-input bg-background px-3 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none font-mono"
+            />
+          </div>
 
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{form.systemPrompt.length} символов</span>
+            <span>
+              Nano: {form.nanoBananaSystemPrompt.length} символов | Flux:{' '}
+              {form.fluxSystemPrompt.length} символов
+            </span>
           </div>
         </div>
       </div>
