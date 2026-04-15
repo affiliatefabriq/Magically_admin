@@ -19,6 +19,7 @@ import {
 
 import {
   Coins,
+  Database,
   ImageIcon,
   LayoutDashboard,
   Loader2,
@@ -34,6 +35,7 @@ const items = [
   { title: 'Публикации', url: '/publications', icon: ImageIcon },
   { title: 'Тренды / Коллекции', url: '/trends-collections', icon: TrendingUp },
   { title: 'Тарифы', url: '/tariffs', icon: Coins },
+  { title: 'Бэкапы', url: '/backups', icon: Database },
   { title: 'Настройки', url: '/settings', icon: Settings },
 ];
 

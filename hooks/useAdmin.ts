@@ -15,6 +15,16 @@ export interface TimeRange {
   to?: string;
 }
 
+export type BackupType = 'postgres' | 'minio' | 'configs';
+
+export interface BackupFileInfo {
+  type: BackupType;
+  fileName: string;
+  size: number;
+  createdAt: string;
+  checksumFileName: string | null;
+}
+
 // --- Users ---
 export const useUsers = () => {
   return useQuery({
@@ -181,6 +191,8 @@ export interface EffectCollection {
   sortOrder: number;
   isActive: boolean;
   displayTargets?: string[];
+  gender?: 'male' | 'female' | 'both';
+  isHot?: boolean;
   options?: Record<string, string>;
 }
 
@@ -204,6 +216,26 @@ export const useUpdateSettings = () => {
       toast.success('Настройки сохранены');
     },
     onError: () => toast.error('Ошибка сохранения настроек'),
+  });
+};
+
+export const useBackups = () =>
+  useQuery<BackupFileInfo[]>({
+    queryKey: ['admin', 'backups'],
+    queryFn: async () =>
+      (await api.get('/admin/backups')).data.data as BackupFileInfo[],
+  });
+
+export const useRunBackup = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (type: BackupType) =>
+      api.post(`/admin/backups/${type}/run`),
+    onSuccess: (_, type) => {
+      qc.invalidateQueries({ queryKey: ['admin', 'backups'] });
+      toast.success(`Бэкап ${type} создан`);
+    },
+    onError: () => toast.error('Не удалось создать бэкап'),
   });
 };
 

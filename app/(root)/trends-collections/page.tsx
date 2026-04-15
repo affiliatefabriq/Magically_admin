@@ -147,6 +147,8 @@ const emptyCollection = (): EffectCollection => ({
   sortOrder: 0,
   isActive: true,
   displayTargets: [],
+  gender: 'both',
+  isHot: false,
   options: {},
 });
 type CollectionsEditorProps = {
@@ -310,6 +312,47 @@ function CollectionsEditor({
                       </label>
                     );
                   })}
+                </div>
+              </div>
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Пол</Label>
+                  <Select
+                    value={collection.gender || 'both'}
+                    onValueChange={(value) =>
+                      updateItem(index, {
+                        gender: value as 'male' | 'female' | 'both',
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="both">Все</SelectItem>
+                      <SelectItem value="female">Женские</SelectItem>
+                      <SelectItem value="male">Мужские</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    Топовая коллекция
+                  </Label>
+                  <Select
+                    value={collection.isHot ? 'yes' : 'no'}
+                    onValueChange={(value) =>
+                      updateItem(index, { isHot: value === 'yes' })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Да</SelectItem>
+                      <SelectItem value="no">Нет</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
