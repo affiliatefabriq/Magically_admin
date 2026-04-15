@@ -1,15 +1,24 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Download, Loader2, RefreshCw } from 'lucide-react';
+import { Download, Loader2, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   BackupFileInfo,
   BackupType,
   useBackups,
+  useDeleteBackup,
   useRunBackup,
 } from '@/hooks/useAdmin';
 
@@ -29,7 +38,9 @@ const formatSize = (bytes: number): string => {
 const Page = () => {
   const { data, isLoading, refetch, isFetching } = useBackups();
   const runBackup = useRunBackup();
+  const deleteBackup = useDeleteBackup();
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
+  const [fileToDelete, setFileToDelete] = useState<BackupFileInfo | null>(null);
 
   const grouped = useMemo(() => {
     const map: Record<BackupType, BackupFileInfo[]> = {
@@ -63,6 +74,17 @@ const Page = () => {
     } finally {
       setDownloadingFile(null);
     }
+  };
+
+  const confirmDelete = async () => {
+    if (!fileToDelete) {
+      return;
+    }
+    await deleteBackup.mutateAsync({
+      type: fileToDelete.type,
+      fileName: fileToDelete.fileName,
+    });
+    setFileToDelete(null);
   };
 
   return (
@@ -126,19 +148,30 @@ const Page = () => {
                           {formatSize(file.size)}
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => void handleDownload(file)}
-                        disabled={downloadingFile === file.fileName}
-                      >
-                        {downloadingFile === file.fileName ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <Download className="size-4" />
-                        )}
-                        Скачать
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void handleDownload(file)}
+                          disabled={downloadingFile === file.fileName}
+                        >
+                          {downloadingFile === file.fileName ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <Download className="size-4" />
+                          )}
+                          Скачать
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => setFileToDelete(file)}
+                          disabled={deleteBackup.isPending}
+                        >
+                          <Trash2 className="size-4" />
+                          Удалить
+                        </Button>
+                      </div>
                     </div>
                   ))
                 )}
@@ -147,6 +180,41 @@ const Page = () => {
           ))}
         </div>
       )}
+      <Dialog open={Boolean(fileToDelete)} onOpenChange={(open) => !open && setFileToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Удалить бэкап?</DialogTitle>
+            <DialogDescription>
+              Файл будет удален без возможности восстановления:
+              <br />
+              <span className="font-medium text-foreground">
+                {fileToDelete?.fileName}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setFileToDelete(null)}
+              disabled={deleteBackup.isPending}
+            >
+              Отмена
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void confirmDelete()}
+              disabled={deleteBackup.isPending}
+            >
+              {deleteBackup.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Trash2 className="size-4" />
+              )}
+              Удалить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

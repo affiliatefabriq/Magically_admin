@@ -239,6 +239,24 @@ export const useRunBackup = () => {
   });
 };
 
+export const useDeleteBackup = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      type,
+      fileName,
+    }: {
+      type: BackupType;
+      fileName: string;
+    }) => api.delete(`/admin/backups/${type}/${encodeURIComponent(fileName)}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'backups'] });
+      toast.success('Бэкап удален');
+    },
+    onError: () => toast.error('Не удалось удалить бэкап'),
+  });
+};
+
 export const useEffectTemplates = (type?: AdminEffectTemplateType) =>
   useQuery({
     queryKey: ['admin', 'effect-templates', type],
