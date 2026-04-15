@@ -146,6 +146,7 @@ const emptyCollection = (): EffectCollection => ({
   effectIds: [],
   sortOrder: 0,
   isActive: true,
+  displayTargets: [],
   options: {},
 });
 type CollectionsEditorProps = {
@@ -154,6 +155,7 @@ type CollectionsEditorProps = {
   value: EffectCollection[];
   onChange: Dispatch<SetStateAction<EffectCollection[]>>;
   optionHints: string[];
+  displayTargetOptions: Array<{ id: string; label: string }>;
   coverAccept: string;
   onUploadCover: CallableFunction;
   isUploadingCover: boolean;
@@ -165,6 +167,7 @@ function CollectionsEditor({
   value,
   onChange,
   optionHints,
+  displayTargetOptions,
   coverAccept,
   onUploadCover,
   isUploadingCover,
@@ -278,6 +281,37 @@ function CollectionsEditor({
                 placeholder="Список effectId, каждый с новой строки"
                 className="md:col-span-2"
               />
+              <div className="md:col-span-2 space-y-2">
+                <Label className="text-xs text-muted-foreground">
+                  Где отображать коллекцию
+                </Label>
+                <div className="flex flex-wrap gap-3">
+                  {displayTargetOptions.map((target) => {
+                    const selected = (
+                      collection.displayTargets || []
+                    ).includes(target.id);
+                    return (
+                      <label
+                        key={target.id}
+                        className="inline-flex items-center gap-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={(e) => {
+                            const current = collection.displayTargets || [];
+                            const next = e.target.checked
+                              ? [...current, target.id]
+                              : current.filter((t) => t !== target.id);
+                            updateItem(index, { displayTargets: next });
+                          }}
+                        />
+                        {target.label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -710,6 +744,21 @@ export default function Page() {
                   view === 'collections_photo'
                     ? ['model', 'orientation']
                     : ['duration', 'orientation', 'audio']
+                }
+                displayTargetOptions={
+                  [
+                    { id: 'photo-effects-page', label: 'Фотоэффекты' },
+                    {
+                      id: 'photo-effects-collections-page',
+                      label: 'Фотоэффекты (коллекции)',
+                    },
+                    { id: 'magic-photo-page', label: 'Magic photo' },
+                    { id: 'video-effects-page', label: 'Видеоэффекты' },
+                    {
+                      id: 'video-effects-collections-page',
+                      label: 'Видеоэффекты (коллекции)',
+                    },
+                  ]
                 }
                 coverAccept={
                   view === 'collections_photo' ? 'image/*' : 'image/*,video/*'

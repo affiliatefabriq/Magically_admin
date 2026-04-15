@@ -178,6 +178,7 @@ export interface EffectCollection {
   effectIds: string[];
   sortOrder: number;
   isActive: boolean;
+  displayTargets?: string[];
   options?: Record<string, string>;
 }
 
