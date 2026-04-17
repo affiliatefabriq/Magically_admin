@@ -449,7 +449,10 @@ export default function Page() {
   );
 
   const trendItems = useMemo(
-    () => trendsQ.data?.pages.flatMap((p: any) => p.items || []) || [],
+    () =>
+      trendsQ.data?.pages.flatMap(
+        (p: any) => p.trends || p.items || p.data?.trends || [],
+      ) || [],
     [trendsQ.data],
   );
 
