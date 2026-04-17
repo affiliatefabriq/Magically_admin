@@ -136,6 +136,10 @@ export interface Settings {
   imageCost: number;
   videoCost: number;
   videoPricePerSecond: number;
+  videoDurationPricing?: Array<{
+    duration: number;
+    pricePerSecond: number;
+  }>;
   photoEffectCost: number;
   videoEffectCost: number;
   aiCost1K: number;
