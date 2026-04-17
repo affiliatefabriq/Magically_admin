@@ -17,6 +17,7 @@ type StateKey = 'guest' | 'noModel' | 'hasModel';
 type FormState = {
   imageCost: number;
   videoCost: number;
+  videoPricePerSecond: number;
   photoEffectCost: number;
   videoEffectCost: number;
   aiCost1K: number;
@@ -102,6 +103,7 @@ const Page = () => {
   const [form, setForm] = useState<FormState>({
     imageCost: 15,
     videoCost: 40,
+    videoPricePerSecond: 8,
     photoEffectCost: 15,
     videoEffectCost: 40,
     aiCost1K: 15,
@@ -155,6 +157,7 @@ const Page = () => {
         setForm({
           imageCost: settings.imageCost,
           videoCost: settings.videoCost,
+          videoPricePerSecond: settings.videoPricePerSecond ?? 8,
           photoEffectCost: settings.photoEffectCost ?? 15,
           videoEffectCost: settings.videoEffectCost ?? 40,
           aiCost1K: settings.aiCost1K,
@@ -362,6 +365,26 @@ const Page = () => {
 
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-medium">
+                    <Video className="h-4 w-4 text-sky-400" />
+                    Видео: цена за 1 сек
+                  </label>
+                  <input
+                    type="number"
+                    min={0.1}
+                    step={0.1}
+                    value={form.videoPricePerSecond}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        videoPricePerSecond: Number(e.target.value),
+                      }))
+                    }
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium">
                     <ImageIcon className="h-4 w-4 text-blue-400" />
                     AI 1K Cost
                   </label>
@@ -412,6 +435,15 @@ const Page = () => {
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
                     за видео
+                  </div>
+                </div>
+                <div className="h-8 w-px bg-border" />
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-sky-400">
+                    {form.videoPricePerSecond}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    за 1 сек видео
                   </div>
                 </div>
                 <div className="h-8 w-px bg-border" />

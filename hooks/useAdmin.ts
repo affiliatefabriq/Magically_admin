@@ -135,6 +135,7 @@ export interface Settings {
   };
   imageCost: number;
   videoCost: number;
+  videoPricePerSecond: number;
   photoEffectCost: number;
   videoEffectCost: number;
   aiCost1K: number;
