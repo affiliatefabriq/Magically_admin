@@ -72,6 +72,7 @@ type EffectFormState = {
   type: AdminEffectTemplateType;
   model: string;
   defaultPrompt: string;
+  exampleImageSet: string[];
   isActive: boolean;
 };
 
@@ -114,6 +115,7 @@ const emptyEffectForm = (type: AdminEffectTemplateType): EffectFormState => ({
   type,
   model: MODEL_OPTIONS[type][0],
   defaultPrompt: '',
+  exampleImageSet: [],
   isActive: true,
 });
 
@@ -416,6 +418,8 @@ export default function Page() {
   const [trendForm, setTrendForm] = useState<TrendFormState>(emptyTrendForm);
   const [trendCover, setTrendCover] = useState<File | null>(null);
   const [trendImages, setTrendImages] = useState<File[]>([]);
+  const [trendInitialImages, setTrendInitialImages] = useState<string[]>([]);
+  const [trendExistingImages, setTrendExistingImages] = useState<string[]>([]);
 
   const [effectForm, setEffectForm] = useState<EffectFormState>(
     emptyEffectForm('photo_effect'),
@@ -544,6 +548,8 @@ export default function Page() {
       setTrendForm(emptyTrendForm);
       setTrendCover(null);
       setTrendImages([]);
+      setTrendInitialImages([]);
+      setTrendExistingImages([]);
       setTrendDialogOpen(true);
       return;
     }
@@ -565,6 +571,11 @@ export default function Page() {
     });
     setTrendCover(null);
     setTrendImages([]);
+    const existing = Array.isArray(item.trendingImageSet)
+      ? item.trendingImageSet
+      : [];
+    setTrendInitialImages(existing);
+    setTrendExistingImages(existing);
     setTrendDialogOpen(true);
   };
 
@@ -576,6 +587,9 @@ export default function Page() {
       type: item.type,
       model: detectModel(item),
       defaultPrompt: item.defaultPrompt || '',
+      exampleImageSet: Array.isArray(item.exampleImageSet)
+        ? item.exampleImageSet
+        : [],
       isActive: item.isActive,
     });
     setEffectCoverFile(null);
@@ -595,6 +609,12 @@ export default function Page() {
     fd.append('isHot', String(trendForm.isHot));
     if (trendCover) fd.append('trendingCover', trendCover);
     trendImages.forEach((f) => fd.append('trendingImageSet', f));
+    if (editingTrend) {
+      const removed = trendInitialImages.filter(
+        (url) => !trendExistingImages.includes(url),
+      );
+      removed.forEach((url) => fd.append('removeImages', url));
+    }
 
     if (editingTrend) {
       updateTrend.mutate(
@@ -630,6 +650,7 @@ export default function Page() {
         provider:
           MODEL_PROVIDER_MAP[effectForm.model] || MODEL_PROVIDER_MAP.kling,
         coverUrl,
+        exampleImageSet: effectForm.exampleImageSet,
         defaultPrompt: effectForm.defaultPrompt.trim() || null,
         modelParams: { ...baseParams, model: effectForm.model },
         isActive: effectForm.isActive,
@@ -972,6 +993,36 @@ export default function Page() {
                 />
               </div>
             </div>
+            {trendExistingImages.length ? (
+              <div className="space-y-2">
+                <Label>Текущие примеры</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {trendExistingImages.map((url, idx) => (
+                    <div
+                      key={`${url}-${idx}`}
+                      className="relative rounded-md overflow-hidden border bg-muted"
+                    >
+                      <ImageHandler
+                        src={url}
+                        alt="trend-example"
+                        className="w-full h-24 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTrendExistingImages((prev) =>
+                            prev.filter((_, i) => i !== idx),
+                          )
+                        }
+                        className="absolute top-1 right-1 rounded-full bg-black/70 text-white text-xs px-1.5"
+                      >
+                        x
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTrendDialogOpen(false)}>
@@ -1103,6 +1154,66 @@ export default function Page() {
                   )}
                 </div>
               )}
+            </div>
+            <div className="space-y-2">
+              <Label>Примерные фото (мозаика)</Label>
+              <div className="flex flex-wrap items-center gap-3">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="max-w-sm"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (!files.length) return;
+                    const uploaded: string[] = [];
+                    for (const file of files) {
+                      const url = await uploadEffectCover.mutateAsync(file);
+                      if (url) uploaded.push(url);
+                    }
+                    if (uploaded.length) {
+                      setEffectForm((f) => ({
+                        ...f,
+                        exampleImageSet: [...f.exampleImageSet, ...uploaded],
+                      }));
+                      toast.success('Примерные фото добавлены');
+                    }
+                  }}
+                />
+                {uploadEffectCover.isPending ? (
+                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                ) : null}
+              </div>
+              {effectForm.exampleImageSet.length ? (
+                <div className="grid grid-cols-4 gap-2">
+                  {effectForm.exampleImageSet.map((url, idx) => (
+                    <div
+                      key={`${url}-${idx}`}
+                      className="relative rounded-md overflow-hidden border bg-muted"
+                    >
+                      <ImageHandler
+                        src={url}
+                        alt="effect-example"
+                        className="w-full h-20 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEffectForm((f) => ({
+                            ...f,
+                            exampleImageSet: f.exampleImageSet.filter(
+                              (_, i) => i !== idx,
+                            ),
+                          }))
+                        }
+                        className="absolute top-1 right-1 rounded-full bg-black/70 text-white text-xs px-1.5"
+                      >
+                        x
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
           <DialogFooter>

@@ -175,6 +175,7 @@ export interface AdminEffectTemplate {
   type: AdminEffectTemplateType;
   provider: string;
   coverUrl?: string | null;
+  exampleImageSet?: string[] | null;
   modelParams?: Record<string, unknown> | null;
   defaultPrompt?: string | null;
   costTokens?: number | null;
