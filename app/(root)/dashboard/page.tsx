@@ -20,6 +20,8 @@ import {
   CopyPlus,
   AlertTriangle,
   Flame,
+  UserPlus,
+  GitBranch,
 } from 'lucide-react';
 import {
   Table,
@@ -135,6 +137,18 @@ const Page = () => {
           icon={AlertTriangle}
           iconColor="text-red-400"
         />
+        <MetricCard
+          title="Приглашённых пользователей"
+          value={overview.invitedCount ?? 0}
+          icon={UserPlus}
+          iconColor="text-teal-400"
+        />
+        <MetricCard
+          title="Пригласивших пользователей"
+          value={overview.invitersCount ?? 0}
+          icon={GitBranch}
+          iconColor="text-indigo-400"
+        />
       </div>
 
       {/* Charts */}
@@ -165,6 +179,13 @@ const Page = () => {
           title="Провальные генерации"
           description="Ошибки по дням"
           color="#f87171"
+          type="area"
+        />
+        <AnalyticsChart
+          data={historical.invitations}
+          title="Приглашения"
+          description="Новые приглашённые пользователи по дням"
+          color="#2dd4bf"
           type="area"
         />
       </div>
@@ -251,6 +272,14 @@ const Page = () => {
             <TabsTrigger value="top-trends" className="gap-1.5">
               Топ трендов
             </TabsTrigger>
+            <TabsTrigger value="referrals" className="gap-1.5">
+              Рефералы
+              {(overview.invitedCount ?? 0) > 0 && (
+                <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                  {overview.invitedCount}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="churned">
@@ -308,6 +337,13 @@ const Page = () => {
               Тренды с наибольшим числом нажатий «Хочу также»
             </p>
             <TopReplicatedTable rows={topReplicatedTrends || []} type="trend" />
+          </TabsContent>
+
+          <TabsContent value="referrals">
+            <p className="text-xs text-muted-foreground mb-3">
+              Пользователи, зарегистрировавшиеся по реферальной ссылке
+            </p>
+            <ReferralStatsBlock overview={overview} segments={safeSegments} />
           </TabsContent>
         </Tabs>
       </div>
@@ -521,5 +557,104 @@ const TopReplicatedTable = ({
     </Table>
   </div>
 );
+
+const ReferralStatsBlock = ({
+  overview,
+  segments,
+}: {
+  overview: any;
+  segments: { all: any[] };
+}) => {
+  const inviters = segments.all
+    .filter((u) => Number(u.invitationsCount ?? 0) > 0)
+    .sort((a, b) => Number(b.invitationsCount) - Number(a.invitationsCount))
+    .slice(0, 20);
+
+  const convRate =
+    overview.invitersCount > 0
+      ? ((overview.invitedCount / overview.invitersCount) * 100).toFixed(1)
+      : '0';
+
+  return (
+    <div className="space-y-4">
+      {/* Mini KPI row */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-xl border border-border bg-card p-4 text-center">
+          <div className="text-2xl font-bold text-teal-400">
+            {overview.invitedCount ?? 0}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            Всего приглашённых
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4 text-center">
+          <div className="text-2xl font-bold text-indigo-400">
+            {overview.invitersCount ?? 0}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">Пригласивших</div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4 text-center">
+          <div className="text-2xl font-bold text-amber-400">{convRate}x</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            Приглашений на инвайтера
+          </div>
+        </div>
+      </div>
+
+      {/* Top inviters table */}
+      <div className="rounded-xl border border-border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent border-border">
+              <TableHead className="text-xs">#</TableHead>
+              <TableHead className="text-xs">Пользователь</TableHead>
+              <TableHead className="text-xs text-right">Приглашено</TableHead>
+              <TableHead className="text-xs text-right">
+                Заработано токенов
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {inviters.map((u, i) => (
+              <TableRow key={u.id} className="border-border">
+                <TableCell className="text-sm text-muted-foreground w-8">
+                  {i + 1}
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{u.username}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {u.email}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <span className="text-sm font-semibold text-teal-400">
+                    {u.invitationsCount ?? 0}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">
+                  <span className="text-sm font-semibold text-amber-400">
+                    {u.earnedTokens ?? 0}
+                  </span>
+                </TableCell>
+              </TableRow>
+            ))}
+            {inviters.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={4}
+                  className="text-center text-muted-foreground text-sm py-8"
+                >
+                  Пока никто никого не пригласил
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+};
 
 export default Page;

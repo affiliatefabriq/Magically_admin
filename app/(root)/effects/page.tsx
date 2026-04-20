@@ -411,7 +411,10 @@ const Page = () => {
                     if (uploaded.length) {
                       setForm((f) => ({
                         ...f,
-                        trendImageSetUrls: [...f.trendImageSetUrls, ...uploaded],
+                        trendImageSetUrls: [
+                          ...f.trendImageSetUrls,
+                          ...uploaded,
+                        ],
                       }));
                       toast.success('Фото добавлены');
                     }
@@ -436,7 +439,7 @@ const Page = () => {
                           setForm((f) => ({
                             ...f,
                             trendImageSetUrls: f.trendImageSetUrls.filter(
-                              (_, i) => i !== idx
+                              (_, i) => i !== idx,
                             ),
                           }))
                         }

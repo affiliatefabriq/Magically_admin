@@ -149,6 +149,7 @@ export interface Settings {
   fluxSystemPrompt: string;
   trialTokens: number;
   trialPeriodDays: number;
+  referralRewardTokens: number;
   subscriptionGracePeriodDays: number;
   titlesEn: {
     guest: [];

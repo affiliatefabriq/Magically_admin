@@ -59,7 +59,7 @@ const Page = () => {
     try {
       const response = await api.get(
         `/admin/backups/${file.type}/${encodeURIComponent(file.fileName)}/download`,
-        { responseType: 'blob' }
+        { responseType: 'blob' },
       );
       const blobUrl = window.URL.createObjectURL(response.data as Blob);
       const anchor = document.createElement('a');
@@ -101,21 +101,34 @@ const Page = () => {
           onClick={() => runBackup.mutate('postgres')}
           disabled={runBackup.isPending}
         >
-          {runBackup.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+          {runBackup.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : null}
           Создать Postgres backup
         </Button>
-        <Button onClick={() => runBackup.mutate('minio')} disabled={runBackup.isPending}>
-          {runBackup.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+        <Button
+          onClick={() => runBackup.mutate('minio')}
+          disabled={runBackup.isPending}
+        >
+          {runBackup.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : null}
           Создать MinIO backup
         </Button>
         <Button
           onClick={() => runBackup.mutate('configs')}
           disabled={runBackup.isPending}
         >
-          {runBackup.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+          {runBackup.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : null}
           Создать Configs backup
         </Button>
-        <Button variant="outline" onClick={() => void refetch()} disabled={isFetching}>
+        <Button
+          variant="outline"
+          onClick={() => void refetch()}
+          disabled={isFetching}
+        >
           <RefreshCw className={`size-4 ${isFetching ? 'animate-spin' : ''}`} />
           Обновить список
         </Button>
@@ -129,7 +142,9 @@ const Page = () => {
         <div className="space-y-4 pb-8">
           {(['postgres', 'minio', 'configs'] as BackupType[]).map((type) => (
             <div key={type} className="rounded-xl border border-border p-3">
-              <h2 className="text-base font-semibold capitalize mb-2">{type}</h2>
+              <h2 className="text-base font-semibold capitalize mb-2">
+                {type}
+              </h2>
               <div className="space-y-2">
                 {grouped[type].length === 0 ? (
                   <div className="text-sm text-muted-foreground">
@@ -142,7 +157,9 @@ const Page = () => {
                       className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/20 p-2"
                     >
                       <div className="min-w-0">
-                        <div className="text-sm font-medium truncate">{file.fileName}</div>
+                        <div className="text-sm font-medium truncate">
+                          {file.fileName}
+                        </div>
                         <div className="text-xs text-muted-foreground">
                           {new Date(file.createdAt).toLocaleString()} |{' '}
                           {formatSize(file.size)}
@@ -180,7 +197,10 @@ const Page = () => {
           ))}
         </div>
       )}
-      <Dialog open={Boolean(fileToDelete)} onOpenChange={(open) => !open && setFileToDelete(null)}>
+      <Dialog
+        open={Boolean(fileToDelete)}
+        onOpenChange={(open) => !open && setFileToDelete(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Удалить бэкап?</DialogTitle>

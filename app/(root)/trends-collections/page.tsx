@@ -289,9 +289,9 @@ function CollectionsEditor({
                 </Label>
                 <div className="flex flex-wrap gap-3">
                   {displayTargetOptions.map((target) => {
-                    const selected = (
-                      collection.displayTargets || []
-                    ).includes(target.id);
+                    const selected = (collection.displayTargets || []).includes(
+                      target.id,
+                    );
                     return (
                       <label
                         key={target.id}
@@ -791,21 +791,19 @@ export default function Page() {
                     ? ['model', 'orientation']
                     : ['duration', 'orientation', 'audio']
                 }
-                displayTargetOptions={
-                  [
-                    { id: 'photo-effects-page', label: 'Фотоэффекты' },
-                    {
-                      id: 'photo-effects-collections-page',
-                      label: 'Фотоэффекты (коллекции)',
-                    },
-                    { id: 'magic-photo-page', label: 'Magic photo' },
-                    { id: 'video-effects-page', label: 'Видеоэффекты' },
-                    {
-                      id: 'video-effects-collections-page',
-                      label: 'Видеоэффекты (коллекции)',
-                    },
-                  ]
-                }
+                displayTargetOptions={[
+                  { id: 'photo-effects-page', label: 'Фотоэффекты' },
+                  {
+                    id: 'photo-effects-collections-page',
+                    label: 'Фотоэффекты (коллекции)',
+                  },
+                  { id: 'magic-photo-page', label: 'Magic photo' },
+                  { id: 'video-effects-page', label: 'Видеоэффекты' },
+                  {
+                    id: 'video-effects-collections-page',
+                    label: 'Видеоэффекты (коллекции)',
+                  },
+                ]}
                 coverAccept={
                   view === 'collections_photo' ? 'image/*' : 'image/*,video/*'
                 }

@@ -30,6 +30,7 @@ type FormState = {
   nanoBananaSystemPrompt: string;
   fluxSystemPrompt: string;
   trialTokens: number;
+  referralRewardTokens: number;
   trialPeriodDays: number;
   subscriptionGracePeriodDays: number;
   titlesEn: Record<StateKey, string[]>;
@@ -107,6 +108,7 @@ type SectionKey =
   | 'trial'
   | 'prompts'
   | 'routing'
+  | 'referral'
   | 'typewriterRu'
   | 'typewriterEn'
   | 'lkRu'
@@ -117,6 +119,7 @@ const SECTION_KEYS: SectionKey[] = [
   'trial',
   'prompts',
   'routing',
+  'referral',
   'typewriterRu',
   'typewriterEn',
   'lkRu',
@@ -137,6 +140,7 @@ const Page = () => {
     aiCost1K: 15,
     aiCost2K: 20,
     systemPrompt: '',
+    referralRewardTokens: 50,
     nanoBananaSystemPrompt: '',
     fluxSystemPrompt: '',
     trialTokens: 50,
@@ -194,6 +198,7 @@ const Page = () => {
           aiCost1K: settings.aiCost1K,
           aiCost2K: settings.aiCost2K,
           systemPrompt: settings.systemPrompt,
+          referralRewardTokens: (settings as any).referralRewardTokens ?? 50,
           nanoBananaSystemPrompt: settings.nanoBananaSystemPrompt || '',
           fluxSystemPrompt: settings.fluxSystemPrompt || '',
           trialTokens: settings.trialTokens,
@@ -246,6 +251,7 @@ const Page = () => {
       pricing: true,
       trial: true,
       prompts: true,
+      referral: true,
       routing: false,
       typewriterRu: false,
       typewriterEn: false,
@@ -651,6 +657,60 @@ const Page = () => {
               </div>
             </div>
           ) : null}
+        </div>
+
+        <div className="rounded-xl border border-border bg-card w-full">
+          <button
+            type="button"
+            onClick={() => toggleSection('referral')}
+            className="w-full flex items-center justify-between px-6 py-4 text-left"
+          >
+            <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+              Реферальная программа
+            </h2>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${
+                openSections.referral ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+          {openSections.referral && (
+            <div className="px-6 pb-6 space-y-5">
+              <p className="text-xs text-muted-foreground">
+                Количество токенов, начисляемых пригласившему пользователю за
+                каждого успешно зарегистрированного реферала.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Награда за реферала (токенов)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={form.referralRewardTokens}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        referralRewardTokens: Number(e.target.value),
+                      }))
+                    }
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-6 p-4 rounded-lg bg-muted/50 border border-border">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-teal-400">
+                    {form.referralRewardTokens}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    токенов за приглашение
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="rounded-xl border border-border bg-card w-full">
