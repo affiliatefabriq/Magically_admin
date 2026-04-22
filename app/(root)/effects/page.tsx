@@ -30,7 +30,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { ImageHandler } from '@/components/shared/ImageHandler';
+import { EffectTemplateDialogForm } from '@/components/effect-template/EffectTemplateDialogForm';
+import {
+  defaultModelForType,
+  providerForModel,
+  resolveModelForType,
+  templateModelToSelectValue,
+} from '@/lib/effectTemplateModels';
 
 type FormState = {
   name: string;
@@ -39,6 +45,7 @@ type FormState = {
   model: string;
   coverUrl: string;
   defaultPrompt: string;
+  costTokens: string;
   trendContent: string;
   trendCoverText: string;
   trendGender: 'male' | 'female' | 'both';
@@ -48,36 +55,6 @@ type FormState = {
   isActive: boolean;
 };
 
-const MODEL_OPTIONS: Record<AdminEffectTemplateType, string[]> = {
-  photo_effect: ['nano-banana-2', 'nano-banana-pro'],
-  video_effect: ['higgsfield-video', 'kling', 'minimax-hailuo', 'grok-video'],
-  live_photo_template: [
-    'higgsfield-video',
-    'kling',
-    'minimax-hailuo',
-    'grok-video',
-  ],
-};
-
-const MODEL_PROVIDER_MAP: Record<string, string> = {
-  'nano-banana-2': 'nano',
-  'nano-banana-pro': 'nano-pro',
-  'higgsfield-video': 'higgsfield',
-  kling: 'kling',
-  'minimax-hailuo': 'hailuo/minimax-2.3',
-  'grok-video': 'grok-video',
-};
-
-const detectModel = (item: AdminEffectTemplate): string => {
-  const raw = item.modelParams?.model;
-  if (typeof raw === 'string' && raw.trim()) return raw.trim();
-  if (item.type === 'photo_effect') return 'nano-banana-2';
-  return 'kling';
-};
-
-const isVideoUrl = (url: string) =>
-  /\.(mp4|mov|webm|mkv)(\?.*)?$/i.test(url.split('?')[0]);
-
 const emptyForm = (
   type: AdminEffectTemplateType,
   model?: string,
@@ -85,9 +62,10 @@ const emptyForm = (
   name: '',
   description: '',
   type,
-  model: model || MODEL_OPTIONS[type][0],
+  model: model || defaultModelForType(type),
   coverUrl: '',
   defaultPrompt: '',
+  costTokens: '',
   trendContent: '',
   trendCoverText: '',
   trendGender: 'both',
@@ -157,7 +135,7 @@ const Page = () => {
 
   const openCreate = () => {
     setEditing(null);
-    setForm(emptyForm(activeType, MODEL_OPTIONS[activeType][0]));
+    setForm(emptyForm(activeType, defaultModelForType(activeType)));
     setDialogOpen(true);
   };
 
@@ -167,15 +145,19 @@ const Page = () => {
       name: item.name || '',
       description: item.description || '',
       type: item.type,
-      model: detectModel(item),
+      model: templateModelToSelectValue(item.type, item.modelParams),
       coverUrl: item.coverUrl || '',
       defaultPrompt: item.defaultPrompt || '',
+      costTokens:
+        item.costTokens != null && item.costTokens >= 0
+          ? String(item.costTokens)
+          : '',
       trendContent: item.trendContent || '',
       trendCoverText: item.trendCoverText || '',
       trendGender: item.trendGender || 'both',
       trendIsHot: Boolean(item.trendIsHot),
       publishToTrends: Boolean(item.publishToTrends),
-      trendImageSetUrls: item.trendImageSetUrls || [],
+      trendImageSetUrls: (item.trendImageSetUrls || []).slice(0, 2),
       isActive: item.isActive,
     });
     setDialogOpen(true);
@@ -192,20 +174,33 @@ const Page = () => {
         ? editing.modelParams
         : {};
 
+    const ct = form.costTokens.trim();
+    const costTokensNum = ct === '' ? null : Number(ct);
+    const costTokens =
+      costTokensNum != null &&
+      Number.isFinite(costTokensNum) &&
+      costTokensNum >= 0
+        ? costTokensNum
+        : null;
+
     const payload: Partial<AdminEffectTemplate> = {
       name: form.name.trim(),
       description: form.description.trim() || null,
       type: form.type,
-      provider: MODEL_PROVIDER_MAP[form.model] || MODEL_PROVIDER_MAP.kling,
+      provider: providerForModel(form.model, form.type),
       coverUrl: form.coverUrl.trim() || null,
       defaultPrompt: form.defaultPrompt.trim() || null,
+      costTokens,
       publishToTrends: form.publishToTrends,
       trendContent: form.trendContent.trim() || undefined,
       trendCoverText: form.trendCoverText.trim() || undefined,
       trendGender: form.trendGender,
       trendIsHot: form.trendIsHot,
-      trendImageSetUrls: form.trendImageSetUrls,
-      modelParams: { ...baseParams, model: form.model },
+      trendImageSetUrls: form.trendImageSetUrls.slice(0, 2),
+      modelParams: {
+        ...baseParams,
+        model: resolveModelForType(form.type, form.model),
+      },
       isActive: form.isActive,
     };
 
@@ -281,7 +276,9 @@ const Page = () => {
                   {item.description || '—'}
                 </div>
               </div>
-              <div className="text-sm">{detectModel(item)}</div>
+              <div className="text-sm">
+                {templateModelToSelectValue(item.type, item.modelParams)}
+              </div>
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
@@ -311,273 +308,149 @@ const Page = () => {
               {editing ? 'Редактировать шаблон' : 'Создать шаблон'}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Название</Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, name: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Модель</Label>
-                <Select
-                  value={form.model}
-                  onValueChange={(value) =>
-                    setForm((f) => ({ ...f, model: value }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MODEL_OPTIONS[form.type].map((model) => (
-                      <SelectItem key={model} value={model}>
-                        {model}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Превью</Label>
-              <div className="flex flex-wrap items-center gap-3">
-                <Input
-                  type="file"
-                  accept={
-                    form.type === 'video_effect' ||
-                    form.type === 'live_photo_template'
-                      ? 'image/*,video/*'
-                      : 'image/*'
-                  }
-                  className="max-w-sm"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const url = await uploadCover.mutateAsync(file);
-                    if (url) {
-                      setForm((f) => ({ ...f, coverUrl: url }));
-                      toast.success('Обложка загружена');
-                    }
-                  }}
-                />
-                {uploadCover.isPending ? (
-                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                ) : null}
-              </div>
-              {form.coverUrl ? (
-                <div className="rounded-lg border overflow-hidden w-40 h-40">
-                  {isVideoUrl(form.coverUrl) ? (
-                    <video
-                      src={form.coverUrl}
-                      className="w-full h-full object-cover"
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                    />
-                  ) : (
-                    <ImageHandler
-                      src={form.coverUrl}
-                      alt="cover"
-                      className="w-full h-full object-cover"
-                    />
-                  )}
+          <EffectTemplateDialogForm
+            type={form.type}
+            onTypeChange={(next) =>
+              setForm((f) => ({
+                ...f,
+                type: next,
+                model: resolveModelForType(next, f.model),
+              }))
+            }
+            name={form.name}
+            onNameChange={(v) => setForm((f) => ({ ...f, name: v }))}
+            description={form.description}
+            onDescriptionChange={(v) =>
+              setForm((f) => ({ ...f, description: v }))
+            }
+            model={form.model}
+            onModelChange={(v) => setForm((f) => ({ ...f, model: v }))}
+            costTokens={form.costTokens}
+            onCostTokensChange={(v) => setForm((f) => ({ ...f, costTokens: v }))}
+            defaultPrompt={form.defaultPrompt}
+            onDefaultPromptChange={(v) =>
+              setForm((f) => ({ ...f, defaultPrompt: v }))
+            }
+            coverPreviewUrl=""
+            coverStoredUrl={form.coverUrl}
+            coverAccept={
+              form.type === 'video_effect' ||
+              form.type === 'live_photo_template'
+                ? 'image/*,video/*'
+                : 'image/*'
+            }
+            onCoverFile={async (file) => {
+              if (!file) return;
+              const url = await uploadCover.mutateAsync(file);
+              if (url) {
+                setForm((f) => ({ ...f, coverUrl: url }));
+                toast.success('Обложка загружена');
+              }
+            }}
+            squareUrls={form.trendImageSetUrls}
+            onRemoveSquare={(idx) =>
+              setForm((f) => ({
+                ...f,
+                trendImageSetUrls: f.trendImageSetUrls.filter((_, i) => i !== idx),
+              }))
+            }
+            onPickSquareFiles={async (files) => {
+              if (!files.length) return;
+              const uploaded: string[] = [];
+              for (const file of files) {
+                const url = await uploadCover.mutateAsync(file);
+                if (url) uploaded.push(url);
+              }
+              if (uploaded.length) {
+                setForm((f) => ({
+                  ...f,
+                  trendImageSetUrls: [...f.trendImageSetUrls, ...uploaded].slice(
+                    0,
+                    2,
+                  ),
+                }));
+                toast.success('Изображения добавлены');
+              }
+            }}
+            isUploadingCover={uploadCover.isPending}
+            isUploadingSquare={uploadCover.isPending}
+            isActive={form.isActive}
+            onIsActiveChange={(v) => setForm((f) => ({ ...f, isActive: v }))}
+            squareSectionTitle="Фото внизу тренда (до 2)"
+            footerExtra={
+              <div className="space-y-4 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Пол для тренда</Label>
+                    <Select
+                      value={form.trendGender}
+                      onValueChange={(value: 'male' | 'female' | 'both') =>
+                        setForm((f) => ({ ...f, trendGender: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Мужской</SelectItem>
+                        <SelectItem value="female">Женский</SelectItem>
+                        <SelectItem value="both">Оба</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Топовый тренд</Label>
+                    <Select
+                      value={form.trendIsHot ? 'yes' : 'no'}
+                      onValueChange={(v) =>
+                        setForm((f) => ({ ...f, trendIsHot: v === 'yes' }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="yes">Да</SelectItem>
+                        <SelectItem value="no">Нет</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Фото внизу тренда</Label>
-              <div className="flex flex-wrap items-center gap-3">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="max-w-sm"
-                  onChange={async (e) => {
-                    const files = Array.from(e.target.files || []);
-                    if (!files.length) return;
-                    const uploaded: string[] = [];
-                    for (const file of files) {
-                      const url = await uploadCover.mutateAsync(file);
-                      if (url) uploaded.push(url);
-                    }
-                    if (uploaded.length) {
-                      setForm((f) => ({
-                        ...f,
-                        trendImageSetUrls: [
-                          ...f.trendImageSetUrls,
-                          ...uploaded,
-                        ],
-                      }));
-                      toast.success('Фото добавлены');
-                    }
-                  }}
-                />
-                {uploadCover.isPending ? (
-                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                ) : null}
-              </div>
-              {form.trendImageSetUrls.length ? (
-                <div className="grid grid-cols-4 gap-2">
-                  {form.trendImageSetUrls.map((url, idx) => (
-                    <div key={`${url}-${idx}`} className="relative">
-                      <ImageHandler
-                        src={url}
-                        alt="trend image"
-                        className="w-full h-24 rounded-md object-cover border"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setForm((f) => ({
-                            ...f,
-                            trendImageSetUrls: f.trendImageSetUrls.filter(
-                              (_, i) => i !== idx,
-                            ),
-                          }))
-                        }
-                        className="absolute top-1 right-1 rounded-full bg-black/70 text-white text-xs px-1.5"
-                      >
-                        x
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="grid grid-cols-1 gap-3">
-              <div className="space-y-1.5">
-                <Label>Тип</Label>
-                <Select
-                  value={form.type}
-                  onValueChange={(value: AdminEffectTemplateType) =>
-                    setForm((f) => ({
-                      ...f,
-                      type: value,
-                      model: MODEL_OPTIONS[value][0],
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="photo_effect">Фотоэффект</SelectItem>
-                    <SelectItem value="video_effect">Видеоэффект</SelectItem>
-                    <SelectItem value="live_photo_template">
-                      Живое фото
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Описание</Label>
-              <Textarea
-                rows={3}
-                value={form.description}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Промпт по умолчанию</Label>
-              <Textarea
-                rows={3}
-                value={form.defaultPrompt}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, defaultPrompt: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Промпт тренда</Label>
-              <Textarea
-                rows={3}
-                value={form.trendContent}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, trendContent: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Текст на обложке тренда</Label>
-              <Input
-                value={form.trendCoverText}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, trendCoverText: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Пол для тренда</Label>
-                <Select
-                  value={form.trendGender}
-                  onValueChange={(value: 'male' | 'female' | 'both') =>
-                    setForm((f) => ({ ...f, trendGender: value }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="male">Мужской</SelectItem>
-                    <SelectItem value="female">Женский</SelectItem>
-                    <SelectItem value="both">Оба</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="inline-flex items-center gap-2 text-sm pt-8">
+                <label className="inline-flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
-                    checked={form.trendIsHot}
+                    checked={form.publishToTrends}
                     onChange={(e) =>
-                      setForm((f) => ({ ...f, trendIsHot: e.target.checked }))
+                      setForm((f) => ({
+                        ...f,
+                        publishToTrends: e.target.checked,
+                      }))
                     }
                   />
-                  Горячий тренд
-                </Label>
+                  Добавить в тренды на главную
+                </label>
+                <div className="space-y-1.5">
+                  <Label>Промпт тренда</Label>
+                  <Textarea
+                    rows={3}
+                    value={form.trendContent}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, trendContent: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Текст на обложке тренда</Label>
+                  <Input
+                    value={form.trendCoverText}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, trendCoverText: e.target.value }))
+                    }
+                  />
+                </div>
               </div>
-            </div>
-
-            <label className="inline-flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.publishToTrends}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, publishToTrends: e.target.checked }))
-                }
-              />
-              Добавить в тренды на главную
-            </label>
-
-            <label className="inline-flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.isActive}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, isActive: e.target.checked }))
-                }
-              />
-              Активен
-            </label>
-          </div>
+            }
+          />
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Отмена

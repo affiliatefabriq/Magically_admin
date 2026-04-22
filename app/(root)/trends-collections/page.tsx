@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type Dispatch,
-  type SetStateAction,
-} from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Edit, Loader2, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -44,6 +38,21 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ImageHandler } from '@/components/shared/ImageHandler';
+import { EffectTemplateDialogForm } from '@/components/effect-template/EffectTemplateDialogForm';
+import {
+  defaultModelForType,
+  providerForModel,
+  resolveModelForType,
+  templateModelToSelectValue,
+} from '@/lib/effectTemplateModels';
+import {
+  PHOTO_COLLECTION_PLACEMENT_OPTIONS,
+  VIDEO_COLLECTION_PLACEMENT_OPTIONS,
+} from '@/lib/effectCollectionDisplayTargets';
+import {
+  collectionOptionKeys,
+  getCollectionOptionFieldUi,
+} from '@/lib/collectionOptionFields';
 
 type ViewFilter =
   | 'trends'
@@ -57,7 +66,9 @@ type AddType =
   | 'photo_effect'
   | 'photo_edit_template'
   | 'video_effect'
-  | 'live_photo_template';
+  | 'live_photo_template'
+  | 'collection_photo'
+  | 'collection_video';
 
 type TrendFormState = {
   content: string;
@@ -73,27 +84,8 @@ type EffectFormState = {
   model: string;
   defaultPrompt: string;
   exampleImageSet: string[];
+  costTokens: string;
   isActive: boolean;
-};
-
-const MODEL_OPTIONS: Record<AdminEffectTemplateType, string[]> = {
-  photo_effect: ['nano-banana-2', 'nano-banana-pro'],
-  video_effect: ['higgsfield-video', 'kling', 'minimax-hailuo', 'grok-video'],
-  live_photo_template: [
-    'higgsfield-video',
-    'kling',
-    'minimax-hailuo',
-    'grok-video',
-  ],
-};
-
-const MODEL_PROVIDER_MAP: Record<string, string> = {
-  'nano-banana-2': 'nano',
-  'nano-banana-pro': 'nano-pro',
-  'higgsfield-video': 'higgsfield',
-  kling: 'kling',
-  'minimax-hailuo': 'hailuo/minimax-2.3',
-  'grok-video': 'grok-video',
 };
 
 const typeLabel: Record<AdminEffectTemplateType, string> = {
@@ -113,17 +105,12 @@ const emptyEffectForm = (type: AdminEffectTemplateType): EffectFormState => ({
   name: '',
   description: '',
   type,
-  model: MODEL_OPTIONS[type][0],
+  model: defaultModelForType(type),
   defaultPrompt: '',
   exampleImageSet: [],
+  costTokens: '',
   isActive: true,
 });
-
-const detectModel = (item: AdminEffectTemplate): string => {
-  const raw = item.modelParams?.model;
-  if (typeof raw === 'string' && raw.trim()) return raw.trim();
-  return item.type === 'photo_effect' ? 'nano-banana-2' : 'kling';
-};
 
 const mapAddTypeToEffectType = (v: AddType): AdminEffectTemplateType => {
   if (v === 'video_effect') return 'video_effect';
@@ -153,257 +140,6 @@ const emptyCollection = (): EffectCollection => ({
   isHot: false,
   options: {},
 });
-type CollectionsEditorProps = {
-  title: string;
-  subtitle: string;
-  value: EffectCollection[];
-  onChange: Dispatch<SetStateAction<EffectCollection[]>>;
-  optionHints: string[];
-  displayTargetOptions: Array<{ id: string; label: string }>;
-  coverAccept: string;
-  onUploadCover: CallableFunction;
-  isUploadingCover: boolean;
-};
-
-function CollectionsEditor({
-  title,
-  subtitle,
-  value,
-  onChange,
-  optionHints,
-  displayTargetOptions,
-  coverAccept,
-  onUploadCover,
-  isUploadingCover,
-}: CollectionsEditorProps) {
-  const updateItem = (
-    index: number,
-    patch: Partial<EffectCollection>,
-    mergeOptions = false,
-  ) => {
-    onChange(
-      value.map((item, i) => {
-        if (i !== index) return item;
-        if (!mergeOptions) return { ...item, ...patch };
-        return {
-          ...item,
-          ...patch,
-          options: { ...(item.options || {}), ...(patch.options || {}) },
-        };
-      }),
-    );
-  };
-
-  return (
-    <div className="rounded-xl border bg-card p-6 space-y-4 w-full">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="font-medium text-sm uppercase tracking-wider">
-            {title}
-          </h2>
-          <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
-        </div>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => onChange([...value, emptyCollection()])}
-        >
-          <Plus className="h-4 w-4" />
-          Добавить коллекцию
-        </Button>
-      </div>
-
-      <div className="space-y-4">
-        {value.map((collection, index) => (
-          <div key={collection.id} className="rounded-lg border p-4 space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input
-                value={collection.title}
-                onChange={(e) => updateItem(index, { title: e.target.value })}
-                placeholder="Название коллекции"
-              />
-              <Input
-                type="number"
-                value={collection.sortOrder}
-                onChange={(e) =>
-                  updateItem(index, { sortOrder: Number(e.target.value) })
-                }
-                placeholder="Порядок"
-              />
-              <div className="md:col-span-2 space-y-2">
-                <div className="flex flex-wrap items-center gap-3">
-                  <Input
-                    type="file"
-                    accept={coverAccept}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      onUploadCover(file, index);
-                    }}
-                    className="max-w-sm"
-                  />
-                  {isUploadingCover ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  ) : null}
-                </div>
-                {collection.coverUrl ? (
-                  <div className="w-32 h-32 rounded-lg overflow-hidden border">
-                    {isVideoUrl(collection.coverUrl) ? (
-                      <video
-                        src={collection.coverUrl}
-                        className="w-full h-full object-cover"
-                        muted
-                        playsInline
-                        loop
-                        autoPlay
-                      />
-                    ) : (
-                      <ImageHandler
-                        src={collection.coverUrl}
-                        alt={collection.title || 'cover'}
-                        className="w-full h-full object-cover"
-                      />
-                    )}
-                  </div>
-                ) : null}
-              </div>
-              <Textarea
-                rows={2}
-                value={collection.description || ''}
-                onChange={(e) =>
-                  updateItem(index, { description: e.target.value })
-                }
-                placeholder="Описание"
-                className="md:col-span-2"
-              />
-              <Textarea
-                rows={3}
-                value={(collection.effectIds || []).join('\n')}
-                onChange={(e) =>
-                  updateItem(index, { effectIds: parseLines(e.target.value) })
-                }
-                placeholder="Список effectId, каждый с новой строки"
-                className="md:col-span-2"
-              />
-              <div className="md:col-span-2 space-y-2">
-                <Label className="text-xs text-muted-foreground">
-                  Где отображать коллекцию
-                </Label>
-                <div className="flex flex-wrap gap-3">
-                  {displayTargetOptions.map((target) => {
-                    const selected = (collection.displayTargets || []).includes(
-                      target.id,
-                    );
-                    return (
-                      <label
-                        key={target.id}
-                        className="inline-flex items-center gap-2 text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selected}
-                          onChange={(e) => {
-                            const current = collection.displayTargets || [];
-                            const next = e.target.checked
-                              ? [...current, target.id]
-                              : current.filter((t) => t !== target.id);
-                            updateItem(index, { displayTargets: next });
-                          }}
-                        />
-                        {target.label}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Пол</Label>
-                  <Select
-                    value={collection.gender || 'both'}
-                    onValueChange={(value) =>
-                      updateItem(index, {
-                        gender: value as 'male' | 'female' | 'both',
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="both">Все</SelectItem>
-                      <SelectItem value="female">Женские</SelectItem>
-                      <SelectItem value="male">Мужские</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    Топовая коллекция
-                  </Label>
-                  <Select
-                    value={collection.isHot ? 'yes' : 'no'}
-                    onValueChange={(value) =>
-                      updateItem(index, { isHot: value === 'yes' })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="yes">Да</SelectItem>
-                      <SelectItem value="no">Нет</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {optionHints.map((key) => (
-                <Input
-                  key={key}
-                  value={collection.options?.[key] || ''}
-                  onChange={(e) =>
-                    updateItem(
-                      index,
-                      { options: { [key]: e.target.value } },
-                      true,
-                    )
-                  }
-                  placeholder={`Опция: ${key}`}
-                />
-              ))}
-            </div>
-
-            <div className="flex items-center justify-between">
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={collection.isActive}
-                  onChange={(e) =>
-                    updateItem(index, { isActive: e.target.checked })
-                  }
-                />
-                Активна
-              </label>
-
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => onChange(value.filter((_, i) => i !== index))}
-                className="text-red-500"
-              >
-                <Trash2 className="h-4 w-4" />
-                Удалить
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export default function Page() {
   const [view, setView] = useState<ViewFilter>('trends');
@@ -450,6 +186,16 @@ export default function Page() {
 
   const [collectionsDraft, setCollectionsDraft] = useState<EffectCollection[]>(
     [],
+  );
+  const [collectionDialogOpen, setCollectionDialogOpen] = useState(false);
+  const [editingCollectionId, setEditingCollectionId] = useState<string | null>(
+    null,
+  );
+  const [collectionModalKind, setCollectionModalKind] = useState<
+    'photo' | 'video'
+  >('photo');
+  const [collectionForm, setCollectionForm] = useState<EffectCollection>(
+    emptyCollection(),
   );
 
   const trendItems = useMemo(
@@ -523,15 +269,75 @@ export default function Page() {
     return () => clearTimeout(timer);
   }, [view, settingsQ.data]);
 
-  const handleUploadCollectionCover = async (file: File, index: number) => {
+  const handleUploadCollectionCoverInModal = async (file: File | null) => {
+    if (!file) return;
     const url = await uploadEffectCover.mutateAsync(file);
     if (!url) return;
+    setCollectionForm((c) => ({ ...c, coverUrl: url }));
+  };
+
+  const collectionDisplayTargetOptions =
+    collectionModalKind === 'photo'
+      ? [...PHOTO_COLLECTION_PLACEMENT_OPTIONS]
+      : [...VIDEO_COLLECTION_PLACEMENT_OPTIONS];
+
+  const collectionCoverAccept =
+    collectionModalKind === 'photo' ? 'image/*' : 'image/*,video/*';
+
+  const sortedCollectionsDraft = useMemo(
+    () =>
+      [...collectionsDraft].sort(
+        (a, b) =>
+          Number(a.sortOrder || 0) - Number(b.sortOrder || 0) ||
+          (a.title || '').localeCompare(b.title || ''),
+      ),
+    [collectionsDraft],
+  );
+
+  const openNewCollectionModal = (kind?: 'photo' | 'video') => {
+    const k =
+      kind ?? (view === 'collections_video' ? 'video' : 'photo');
+    setCollectionModalKind(k);
+    setEditingCollectionId(null);
+    setCollectionForm(emptyCollection());
+    setCollectionDialogOpen(true);
+  };
+
+  const openEditCollectionModal = (item: EffectCollection) => {
+    setCollectionModalKind(
+      view === 'collections_video' ? 'video' : 'photo',
+    );
+    setEditingCollectionId(item.id);
+    setCollectionForm(
+      JSON.parse(JSON.stringify(item)) as EffectCollection,
+    );
+    setCollectionDialogOpen(true);
+  };
+
+  const submitCollectionModal = () => {
+    if (!collectionForm.title.trim()) {
+      toast.error('Укажите название коллекции');
+      return;
+    }
     setCollectionsDraft((prev) => {
-      const next = [...prev];
-      if (!next[index]) return prev;
-      next[index] = { ...next[index], coverUrl: url };
-      return next;
+      if (editingCollectionId === null) {
+        const next = [...prev, { ...collectionForm, sortOrder: prev.length }];
+        return next;
+      }
+      const idx = prev.findIndex((x) => x.id === editingCollectionId);
+      if (idx < 0) {
+        return [...prev, { ...collectionForm, sortOrder: prev.length }];
+      }
+      return prev.map((x, i) =>
+        i === idx ? { ...collectionForm } : x,
+      );
     });
+    setCollectionDialogOpen(false);
+    setEditingCollectionId(null);
+  };
+
+  const removeCollectionById = (id: string) => {
+    setCollectionsDraft((prev) => prev.filter((c) => c.id !== id));
   };
 
   const saveCollections = () => {
@@ -551,6 +357,16 @@ export default function Page() {
       setTrendInitialImages([]);
       setTrendExistingImages([]);
       setTrendDialogOpen(true);
+      return;
+    }
+    if (addType === 'collection_photo') {
+      setView('collections_photo');
+      openNewCollectionModal('photo');
+      return;
+    }
+    if (addType === 'collection_video') {
+      setView('collections_video');
+      openNewCollectionModal('video');
       return;
     }
     const type = mapAddTypeToEffectType(addType);
@@ -585,11 +401,15 @@ export default function Page() {
       name: item.name || '',
       description: item.description || '',
       type: item.type,
-      model: detectModel(item),
+      model: templateModelToSelectValue(item.type, item.modelParams),
       defaultPrompt: item.defaultPrompt || '',
-      exampleImageSet: Array.isArray(item.exampleImageSet)
-        ? item.exampleImageSet
-        : [],
+      exampleImageSet: (
+        Array.isArray(item.exampleImageSet) ? item.exampleImageSet : []
+      ).slice(0, 2),
+      costTokens:
+        item.costTokens != null && item.costTokens >= 0
+          ? String(item.costTokens)
+          : '',
       isActive: item.isActive,
     });
     setEffectCoverFile(null);
@@ -608,7 +428,8 @@ export default function Page() {
     fd.append('gender', trendForm.gender);
     fd.append('isHot', String(trendForm.isHot));
     if (trendCover) fd.append('trendingCover', trendCover);
-    trendImages.forEach((f) => fd.append('trendingImageSet', f));
+    const maxNew = Math.max(0, 2 - trendExistingImages.length);
+    trendImages.slice(0, maxNew).forEach((f) => fd.append('trendingImageSet', f));
     if (editingTrend) {
       const removed = trendInitialImages.filter(
         (url) => !trendExistingImages.includes(url),
@@ -643,16 +464,27 @@ export default function Page() {
         coverUrl = uploaded || null;
       }
 
+      const ct = effectForm.costTokens.trim();
+      const costTokensNum = ct === '' ? null : Number(ct);
+      const costTokens =
+        costTokensNum != null &&
+        Number.isFinite(costTokensNum) &&
+        costTokensNum >= 0
+          ? costTokensNum
+          : null;
       const payload: Partial<AdminEffectTemplate> = {
         name: effectForm.name.trim(),
         description: effectForm.description.trim() || null,
         type: effectForm.type,
-        provider:
-          MODEL_PROVIDER_MAP[effectForm.model] || MODEL_PROVIDER_MAP.kling,
+        provider: providerForModel(effectForm.model, effectForm.type),
         coverUrl,
-        exampleImageSet: effectForm.exampleImageSet,
+        exampleImageSet: effectForm.exampleImageSet.slice(0, 2),
         defaultPrompt: effectForm.defaultPrompt.trim() || null,
-        modelParams: { ...baseParams, model: effectForm.model },
+        modelParams: {
+          ...baseParams,
+          model: resolveModelForType(effectForm.type, effectForm.model),
+        },
+        costTokens,
         isActive: effectForm.isActive,
       };
       if (editingEffect) {
@@ -686,7 +518,7 @@ export default function Page() {
             value={addType}
             onValueChange={(v) => setAddType(v as AddType)}
           >
-            <SelectTrigger className="w-[300px]">
+            <SelectTrigger className="w-[min(100%,380px)] max-w-[380px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -700,6 +532,12 @@ export default function Page() {
               <SelectItem value="video_effect">Новый видеоэффект</SelectItem>
               <SelectItem value="live_photo_template">
                 Новые шаблоны для оживления
+              </SelectItem>
+              <SelectItem value="collection_photo">
+                Новая коллекция фотоэффектов
+              </SelectItem>
+              <SelectItem value="collection_video">
+                Новая коллекция видеоэффектов
               </SelectItem>
             </SelectContent>
           </Select>
@@ -794,45 +632,95 @@ export default function Page() {
             </div>
           ) : (
             <>
-              <CollectionsEditor
-                title={
-                  view === 'collections_photo'
-                    ? 'Коллекции фотоэффектов'
-                    : 'Коллекции видеоэффектов'
-                }
-                subtitle={
-                  view === 'collections_photo'
-                    ? 'Базовые поля, список effectId и опции'
-                    : 'Обложка изображение или видео, effectId и опции'
-                }
-                value={collectionsDraft}
-                onChange={setCollectionsDraft}
-                optionHints={
-                  view === 'collections_photo'
-                    ? ['model', 'orientation']
-                    : ['duration', 'orientation', 'audio']
-                }
-                displayTargetOptions={[
-                  { id: 'photo-effects-page', label: 'Фотоэффекты' },
-                  {
-                    id: 'photo-effects-collections-page',
-                    label: 'Фотоэффекты (коллекции)',
-                  },
-                  { id: 'magic-photo-page', label: 'Magic photo' },
-                  { id: 'video-effects-page', label: 'Видеоэффекты' },
-                  {
-                    id: 'video-effects-collections-page',
-                    label: 'Видеоэффекты (коллекции)',
-                  },
-                ]}
-                coverAccept={
-                  view === 'collections_photo' ? 'image/*' : 'image/*,video/*'
-                }
-                onUploadCover={(file: File, index: number) =>
-                  void handleUploadCollectionCover(file, index)
-                }
-                isUploadingCover={uploadEffectCover.isPending}
-              />
+              <div className="rounded-xl border bg-card">
+                <div className="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-medium text-sm uppercase tracking-wider">
+                      {view === 'collections_photo'
+                        ? 'Коллекции фотоэффектов'
+                        : 'Коллекции видеоэффектов'}
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Создание и правка в модальном окне, затем сохранение на
+                      сервер
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => openNewCollectionModal()}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Добавить коллекцию
+                  </Button>
+                </div>
+                <div className="divide-y">
+                  {sortedCollectionsDraft.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-4 flex items-center gap-4 flex-wrap"
+                    >
+                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted shrink-0 border">
+                        {item.coverUrl ? (
+                          isVideoUrl(item.coverUrl) ? (
+                            <video
+                              src={item.coverUrl}
+                              className="w-full h-full object-cover"
+                              muted
+                              playsInline
+                              loop
+                              autoPlay
+                            />
+                          ) : (
+                            <ImageHandler
+                              src={item.coverUrl}
+                              alt={item.title || ''}
+                              className="w-full h-full object-cover"
+                            />
+                          )
+                        ) : null}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium truncate">
+                          {item.title || 'Без названия'}
+                        </div>
+                        <div className="text-xs text-muted-foreground line-clamp-2">
+                          {item.description || '—'}
+                        </div>
+                        {!item.isActive ? (
+                          <div className="text-xs text-amber-600 mt-1">
+                            Неактивна
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditCollectionModal(item)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeCollectionById(item.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {!sortedCollectionsDraft.length ? (
+                    <div className="py-12 text-center text-sm text-muted-foreground">
+                      Нет коллекций
+                    </div>
+                  ) : null}
+                </div>
+              </div>
               <Button
                 onClick={saveCollections}
                 disabled={updateSettings.isPending}
@@ -874,7 +762,8 @@ export default function Page() {
                   <div className="min-w-0 flex-1">
                     <div className="font-medium truncate">{item.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {typeLabel[item.type]} • {detectModel(item)}
+                      {typeLabel[item.type]} •{' '}
+                      {templateModelToSelectValue(item.type, item.modelParams)}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -972,9 +861,9 @@ export default function Page() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Обложка</Label>
+                <Label>Обложка 9:16 (1 файл)</Label>
                 <Input
                   type="file"
                   accept="image/*"
@@ -982,30 +871,37 @@ export default function Page() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Изображения коллекции</Label>
+                <Label>Квадратные изображения (до 2)</Label>
                 <Input
                   type="file"
                   accept="image/*"
                   multiple
-                  onChange={(e) =>
-                    setTrendImages(Array.from(e.target.files || []))
+                  disabled={
+                    trendExistingImages.length + trendImages.length >= 2
                   }
+                  onChange={(e) => {
+                    const picked = Array.from(e.target.files || []);
+                    const cap =
+                      2 - trendExistingImages.length - trendImages.length;
+                    setTrendImages(picked.slice(0, Math.max(0, cap)));
+                    e.target.value = '';
+                  }}
                 />
               </div>
             </div>
             {trendExistingImages.length ? (
               <div className="space-y-2">
                 <Label>Текущие примеры</Label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2 max-w-sm">
                   {trendExistingImages.map((url, idx) => (
                     <div
                       key={`${url}-${idx}`}
-                      className="relative rounded-md overflow-hidden border bg-muted"
+                      className="relative aspect-square rounded-md overflow-hidden border bg-muted"
                     >
                       <ImageHandler
                         src={url}
                         alt="trend-example"
-                        className="w-full h-24 object-cover"
+                        className="w-full h-full object-cover"
                       />
                       <button
                         type="button"
@@ -1040,182 +936,72 @@ export default function Page() {
               {editingEffect ? 'Редактировать эффект' : 'Новый эффект'}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Тип</Label>
-                <Select
-                  value={effectForm.type}
-                  onValueChange={(v) => {
-                    const type = v as AdminEffectTemplateType;
-                    setEffectForm((f) => ({
-                      ...f,
-                      type,
-                      model: MODEL_OPTIONS[type][0],
-                    }));
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="photo_effect">Фотоэффект</SelectItem>
-                    <SelectItem value="video_effect">Видеоэффект</SelectItem>
-                    <SelectItem value="live_photo_template">
-                      Шаблон оживления
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Модель</Label>
-                <Select
-                  value={effectForm.model}
-                  onValueChange={(v) =>
-                    setEffectForm((f) => ({ ...f, model: v }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MODEL_OPTIONS[effectForm.type].map((m) => (
-                      <SelectItem key={m} value={m}>
-                        {m}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Название</Label>
-              <Input
-                value={effectForm.name}
-                onChange={(e) =>
-                  setEffectForm((f) => ({ ...f, name: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Описание</Label>
-              <Textarea
-                rows={3}
-                value={effectForm.description}
-                onChange={(e) =>
-                  setEffectForm((f) => ({ ...f, description: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Промпт по умолчанию</Label>
-              <Textarea
-                rows={3}
-                value={effectForm.defaultPrompt}
-                onChange={(e) =>
-                  setEffectForm((f) => ({
-                    ...f,
-                    defaultPrompt: e.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Превью (изображение или видео)</Label>
-              <Input
-                type="file"
-                accept={
-                  effectForm.type === 'video_effect' ||
-                  effectForm.type === 'live_photo_template'
-                    ? 'image/*,video/*'
-                    : 'image/*'
-                }
-                onChange={(e) =>
-                  setEffectCoverFile(e.target.files?.[0] || null)
-                }
-              />
-              {(effectCoverPreviewUrl || effectCoverUrl) && (
-                <div className="rounded-lg border overflow-hidden w-40 h-40 bg-muted">
-                  {isVideoUrl(effectCoverPreviewUrl || effectCoverUrl) ? (
-                    <video
-                      src={effectCoverPreviewUrl || effectCoverUrl}
-                      className="w-full h-full object-cover"
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                    />
-                  ) : (
-                    <ImageHandler
-                      src={effectCoverPreviewUrl || effectCoverUrl}
-                      alt="cover"
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Примерные фото (мозаика)</Label>
-              <div className="flex flex-wrap items-center gap-3">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="max-w-sm"
-                  onChange={async (e) => {
-                    const files = Array.from(e.target.files || []);
-                    if (!files.length) return;
-                    const uploaded: string[] = [];
-                    for (const file of files) {
-                      const url = await uploadEffectCover.mutateAsync(file);
-                      if (url) uploaded.push(url);
-                    }
-                    if (uploaded.length) {
-                      setEffectForm((f) => ({
-                        ...f,
-                        exampleImageSet: [...f.exampleImageSet, ...uploaded],
-                      }));
-                      toast.success('Примерные фото добавлены');
-                    }
-                  }}
-                />
-                {uploadEffectCover.isPending ? (
-                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                ) : null}
-              </div>
-              {effectForm.exampleImageSet.length ? (
-                <div className="grid grid-cols-4 gap-2">
-                  {effectForm.exampleImageSet.map((url, idx) => (
-                    <div
-                      key={`${url}-${idx}`}
-                      className="relative rounded-md overflow-hidden border bg-muted"
-                    >
-                      <ImageHandler
-                        src={url}
-                        alt="effect-example"
-                        className="w-full h-20 object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setEffectForm((f) => ({
-                            ...f,
-                            exampleImageSet: f.exampleImageSet.filter(
-                              (_, i) => i !== idx,
-                            ),
-                          }))
-                        }
-                        className="absolute top-1 right-1 rounded-full bg-black/70 text-white text-xs px-1.5"
-                      >
-                        x
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          </div>
+          <EffectTemplateDialogForm
+            type={effectForm.type}
+            onTypeChange={(next) =>
+              setEffectForm((f) => ({
+                ...f,
+                type: next,
+                model: resolveModelForType(next, f.model),
+              }))
+            }
+            name={effectForm.name}
+            onNameChange={(v) => setEffectForm((f) => ({ ...f, name: v }))}
+            description={effectForm.description}
+            onDescriptionChange={(v) =>
+              setEffectForm((f) => ({ ...f, description: v }))
+            }
+            model={effectForm.model}
+            onModelChange={(v) => setEffectForm((f) => ({ ...f, model: v }))}
+            costTokens={effectForm.costTokens}
+            onCostTokensChange={(v) =>
+              setEffectForm((f) => ({ ...f, costTokens: v }))
+            }
+            defaultPrompt={effectForm.defaultPrompt}
+            onDefaultPromptChange={(v) =>
+              setEffectForm((f) => ({ ...f, defaultPrompt: v }))
+            }
+            coverPreviewUrl={effectCoverPreviewUrl}
+            coverStoredUrl={effectCoverUrl}
+            coverAccept={
+              effectForm.type === 'video_effect' ||
+              effectForm.type === 'live_photo_template'
+                ? 'image/*,video/*'
+                : 'image/*'
+            }
+            onCoverFile={(f) => setEffectCoverFile(f)}
+            squareUrls={effectForm.exampleImageSet}
+            onRemoveSquare={(idx) =>
+              setEffectForm((f) => ({
+                ...f,
+                exampleImageSet: f.exampleImageSet.filter((_, i) => i !== idx),
+              }))
+            }
+            onPickSquareFiles={async (files) => {
+              if (!files.length) return;
+              const uploaded: string[] = [];
+              for (const file of files) {
+                const url = await uploadEffectCover.mutateAsync(file);
+                if (url) uploaded.push(url);
+              }
+              if (uploaded.length) {
+                setEffectForm((f) => ({
+                  ...f,
+                  exampleImageSet: [...f.exampleImageSet, ...uploaded].slice(
+                    0,
+                    2,
+                  ),
+                }));
+                toast.success('Изображения добавлены');
+              }
+            }}
+            isUploadingCover={false}
+            isUploadingSquare={uploadEffectCover.isPending}
+            isActive={effectForm.isActive}
+            onIsActiveChange={(v) =>
+              setEffectForm((f) => ({ ...f, isActive: v }))
+            }
+          />
           <DialogFooter>
             <Button
               variant="outline"
@@ -1224,6 +1010,255 @@ export default function Page() {
               Отмена
             </Button>
             <Button onClick={submitEffect}>Сохранить</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={collectionDialogOpen} onOpenChange={setCollectionDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingCollectionId
+                ? 'Редактировать коллекцию'
+                : 'Новая коллекция'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Название коллекции</Label>
+                <Input
+                  value={collectionForm.title}
+                  onChange={(e) =>
+                    setCollectionForm((c) => ({
+                      ...c,
+                      title: e.target.value,
+                    }))
+                  }
+                  placeholder="Название"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Порядок</Label>
+                <Input
+                  type="number"
+                  value={collectionForm.sortOrder}
+                  onChange={(e) =>
+                    setCollectionForm((c) => ({
+                      ...c,
+                      sortOrder: Number(e.target.value),
+                    }))
+                  }
+                />
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <Label>Обложка</Label>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Input
+                    type="file"
+                    accept={collectionCoverAccept}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = '';
+                      if (file) void handleUploadCollectionCoverInModal(file);
+                    }}
+                    className="max-w-sm"
+                  />
+                  {uploadEffectCover.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : null}
+                </div>
+                {collectionForm.coverUrl ? (
+                  <div className="w-32 h-32 rounded-lg overflow-hidden border">
+                    {isVideoUrl(collectionForm.coverUrl) ? (
+                      <video
+                        src={collectionForm.coverUrl}
+                        className="w-full h-full object-cover"
+                        muted
+                        playsInline
+                        loop
+                        autoPlay
+                      />
+                    ) : (
+                      <ImageHandler
+                        src={collectionForm.coverUrl}
+                        alt={collectionForm.title || 'cover'}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+                ) : null}
+              </div>
+              <div className="md:col-span-2 space-y-1.5">
+                <Label>Описание</Label>
+                <Textarea
+                  rows={2}
+                  value={collectionForm.description || ''}
+                  onChange={(e) =>
+                    setCollectionForm((c) => ({
+                      ...c,
+                      description: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="md:col-span-2 space-y-2 rounded-lg border bg-muted/30 p-3">
+                <Label className="text-sm font-medium">
+                  Где показывать коллекцию
+                </Label>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Неотмеченное состояние: коллекция видна во всех разделах этого
+                  типа (фото или видео). Отметьте страницы, если нужно ограничить
+                  показ.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {collectionDisplayTargetOptions.map((target) => {
+                    const selected = (
+                      collectionForm.displayTargets || []
+                    ).includes(target.id);
+                    return (
+                      <label
+                        key={target.id}
+                        className="inline-flex items-center gap-2 text-sm cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          className="rounded border"
+                          checked={selected}
+                          onChange={(e) => {
+                            const current =
+                              collectionForm.displayTargets || [];
+                            const next = e.target.checked
+                              ? [...new Set([...current, target.id])]
+                              : current.filter((t) => t !== target.id);
+                            setCollectionForm((c) => ({
+                              ...c,
+                              displayTargets: next,
+                            }));
+                          }}
+                        />
+                        {target.label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="md:col-span-2 space-y-1.5">
+                <Label>Список effectId</Label>
+                <Textarea
+                  rows={4}
+                  value={(collectionForm.effectIds || []).join('\n')}
+                  onChange={(e) =>
+                    setCollectionForm((c) => ({
+                      ...c,
+                      effectIds: parseLines(e.target.value),
+                    }))
+                  }
+                  placeholder="Каждый id с новой строки"
+                />
+              </div>
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Пол</Label>
+                  <Select
+                    value={collectionForm.gender || 'both'}
+                    onValueChange={(value) =>
+                      setCollectionForm((c) => ({
+                        ...c,
+                        gender: value as 'male' | 'female' | 'both',
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="both">Все</SelectItem>
+                      <SelectItem value="female">Женские</SelectItem>
+                      <SelectItem value="male">Мужские</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Топовая коллекция</Label>
+                  <Select
+                    value={collectionForm.isHot ? 'yes' : 'no'}
+                    onValueChange={(value) =>
+                      setCollectionForm((c) => ({
+                        ...c,
+                        isHot: value === 'yes',
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Да</SelectItem>
+                      <SelectItem value="no">Нет</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">
+                Дополнительные параметры (options)
+              </Label>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Пара ключ–значение в JSON коллекции для будущих сценариев или
+                кастомной логики. Не влияют на список эффектов по effectId, если
+                клиент их явно не читает.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {collectionOptionKeys(collectionModalKind).map((key) => {
+                  const ui = getCollectionOptionFieldUi(key);
+                  return (
+                    <div key={key} className="space-y-1.5">
+                      <Label className="text-sm">{ui.label}</Label>
+                      <p className="text-xs text-muted-foreground leading-snug">
+                        {ui.hint}
+                      </p>
+                      <Input
+                        value={collectionForm.options?.[key] || ''}
+                        onChange={(e) =>
+                          setCollectionForm((c) => ({
+                            ...c,
+                            options: {
+                              ...(c.options || {}),
+                              [key]: e.target.value,
+                            },
+                          }))
+                        }
+                        placeholder={ui.placeholder}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={collectionForm.isActive}
+                onChange={(e) =>
+                  setCollectionForm((c) => ({
+                    ...c,
+                    isActive: e.target.checked,
+                  }))
+                }
+              />
+              Активна
+            </label>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCollectionDialogOpen(false)}
+            >
+              Отмена
+            </Button>
+            <Button onClick={submitCollectionModal}>Сохранить в списке</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
