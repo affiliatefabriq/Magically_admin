@@ -177,6 +177,10 @@ export interface AdminEffectTemplate {
   coverUrl?: string | null;
   exampleImageSet?: string[] | null;
   modelParams?: Record<string, unknown> | null;
+  displayTargets?: string[] | null;
+  options?: Record<string, unknown> | null;
+  gender?: 'male' | 'female' | 'both';
+  isHot?: boolean;
   defaultPrompt?: string | null;
   costTokens?: number | null;
   isActive: boolean;

@@ -319,14 +319,12 @@ const Page = () => {
             }
             name={form.name}
             onNameChange={(v) => setForm((f) => ({ ...f, name: v }))}
-            description={form.description}
-            onDescriptionChange={(v) =>
-              setForm((f) => ({ ...f, description: v }))
-            }
             model={form.model}
             onModelChange={(v) => setForm((f) => ({ ...f, model: v }))}
             costTokens={form.costTokens}
-            onCostTokensChange={(v) => setForm((f) => ({ ...f, costTokens: v }))}
+            onCostTokensChange={(v) =>
+              setForm((f) => ({ ...f, costTokens: v }))
+            }
             defaultPrompt={form.defaultPrompt}
             onDefaultPromptChange={(v) =>
               setForm((f) => ({ ...f, defaultPrompt: v }))
@@ -351,7 +349,9 @@ const Page = () => {
             onRemoveSquare={(idx) =>
               setForm((f) => ({
                 ...f,
-                trendImageSetUrls: f.trendImageSetUrls.filter((_, i) => i !== idx),
+                trendImageSetUrls: f.trendImageSetUrls.filter(
+                  (_, i) => i !== idx,
+                ),
               }))
             }
             onPickSquareFiles={async (files) => {
@@ -364,10 +364,10 @@ const Page = () => {
               if (uploaded.length) {
                 setForm((f) => ({
                   ...f,
-                  trendImageSetUrls: [...f.trendImageSetUrls, ...uploaded].slice(
-                    0,
-                    2,
-                  ),
+                  trendImageSetUrls: [
+                    ...f.trendImageSetUrls,
+                    ...uploaded,
+                  ].slice(0, 2),
                 }));
                 toast.success('Изображения добавлены');
               }

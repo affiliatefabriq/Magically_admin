@@ -15,7 +15,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ImageHandler } from '@/components/shared/ImageHandler';
-import { getModelsForType, resolveModelForType } from '@/lib/effectTemplateModels';
+import {
+  getModelsForType,
+  resolveModelForType,
+} from '@/lib/effectTemplateModels';
 
 const isVideoUrl = (url: string) =>
   /\.(mp4|mov|webm|mkv)(\?.*)?$/i.test(url.split('?')[0]);
@@ -27,8 +30,6 @@ type EffectTemplateDialogFormProps = {
   onTypeChange: (type: AdminEffectTemplateType) => void;
   name: string;
   onNameChange: (v: string) => void;
-  description: string;
-  onDescriptionChange: (v: string) => void;
   model: string;
   onModelChange: (v: string) => void;
   costTokens: string;
@@ -48,6 +49,7 @@ type EffectTemplateDialogFormProps = {
   onIsActiveChange: (v: boolean) => void;
   footerExtra?: ReactNode;
   squareSectionTitle?: string;
+  showTypeSelect?: boolean;
 };
 
 export function EffectTemplateDialogForm({
@@ -55,8 +57,6 @@ export function EffectTemplateDialogForm({
   onTypeChange,
   name,
   onNameChange,
-  description,
-  onDescriptionChange,
   model,
   onModelChange,
   costTokens,
@@ -76,6 +76,7 @@ export function EffectTemplateDialogForm({
   onIsActiveChange,
   footerExtra,
   squareSectionTitle = `Квадратные изображения (до ${SQUARE_MAX})`,
+  showTypeSelect = true,
 }: EffectTemplateDialogFormProps) {
   const coverDisplay = coverPreviewUrl || coverStoredUrl;
   const modelList = [...getModelsForType(type)];
@@ -83,22 +84,23 @@ export function EffectTemplateDialogForm({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        <Label>Тип эффекта</Label>
-        <Select
-          value={type}
-          onValueChange={(v) => onTypeChange(v as AdminEffectTemplateType)}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="photo_effect">Фотоэффект</SelectItem>
-            <SelectItem value="video_effect">Видеоэффект</SelectItem>
-            <SelectItem value="live_photo_template">Шаблон оживления</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {showTypeSelect ? (
+        <div className="space-y-1.5">
+          <Label>Тип эффекта</Label>
+          <Select
+            value={type}
+            onValueChange={(v) => onTypeChange(v as AdminEffectTemplateType)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="photo_effect">Фотоэффект</SelectItem>
+              <SelectItem value="video_effect">Видеоэффект</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
 
       <div className="space-y-1.5">
         <Label>Заголовок на обложке</Label>
@@ -130,15 +132,6 @@ export function EffectTemplateDialogForm({
           value={costTokens}
           onChange={(e) => onCostTokensChange(e.target.value)}
           placeholder="Пусто — по умолчанию из настроек"
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label>Описание</Label>
-        <Textarea
-          rows={2}
-          value={description}
-          onChange={(e) => onDescriptionChange(e.target.value)}
         />
       </div>
 

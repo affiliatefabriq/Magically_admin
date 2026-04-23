@@ -61,14 +61,7 @@ type ViewFilter =
   | 'collections_photo'
   | 'collections_video';
 
-type AddType =
-  | 'trend'
-  | 'photo_effect'
-  | 'photo_edit_template'
-  | 'video_effect'
-  | 'live_photo_template'
-  | 'collection_photo'
-  | 'collection_video';
+type AddType = 'trend' | 'photo_effect' | 'video_effect';
 
 type TrendFormState = {
   content: string;
@@ -85,6 +78,10 @@ type EffectFormState = {
   defaultPrompt: string;
   exampleImageSet: string[];
   costTokens: string;
+  displayTargets: string[];
+  videoDurations: number[];
+  gender: 'male' | 'female' | 'both';
+  isHot: boolean;
   isActive: boolean;
 };
 
@@ -109,14 +106,12 @@ const emptyEffectForm = (type: AdminEffectTemplateType): EffectFormState => ({
   defaultPrompt: '',
   exampleImageSet: [],
   costTokens: '',
+  displayTargets: [],
+  videoDurations: [5],
+  gender: 'both',
+  isHot: false,
   isActive: true,
 });
-
-const mapAddTypeToEffectType = (v: AddType): AdminEffectTemplateType => {
-  if (v === 'video_effect') return 'video_effect';
-  if (v === 'live_photo_template') return 'live_photo_template';
-  return 'photo_effect';
-};
 
 const isVideoUrl = (url: string) =>
   /\.(mp4|mov|webm|mkv)(\?.*)?$/i.test(url.split('?')[0]);
@@ -143,7 +138,7 @@ const emptyCollection = (): EffectCollection => ({
 
 export default function Page() {
   const [view, setView] = useState<ViewFilter>('trends');
-  const [addType, setAddType] = useState<AddType>('trend');
+  const [createKind, setCreateKind] = useState<AddType>('trend');
   const [trendDialogOpen, setTrendDialogOpen] = useState(false);
   const [effectDialogOpen, setEffectDialogOpen] = useState(false);
   const [editingTrend, setEditingTrend] = useState<any | null>(null);
@@ -194,9 +189,8 @@ export default function Page() {
   const [collectionModalKind, setCollectionModalKind] = useState<
     'photo' | 'video'
   >('photo');
-  const [collectionForm, setCollectionForm] = useState<EffectCollection>(
-    emptyCollection(),
-  );
+  const [collectionForm, setCollectionForm] =
+    useState<EffectCollection>(emptyCollection());
 
   const trendItems = useMemo(
     () =>
@@ -220,6 +214,10 @@ export default function Page() {
     () => (effectCoverFile ? URL.createObjectURL(effectCoverFile) : ''),
     [effectCoverFile],
   );
+  const effectDisplayTargetOptions =
+    effectForm.type === 'video_effect'
+      ? VIDEO_COLLECTION_PLACEMENT_OPTIONS
+      : PHOTO_COLLECTION_PLACEMENT_OPTIONS;
 
   const moveEffect = async (fromId: string, toId: string) => {
     if (fromId === toId) return;
@@ -295,8 +293,7 @@ export default function Page() {
   );
 
   const openNewCollectionModal = (kind?: 'photo' | 'video') => {
-    const k =
-      kind ?? (view === 'collections_video' ? 'video' : 'photo');
+    const k = kind ?? (view === 'collections_video' ? 'video' : 'photo');
     setCollectionModalKind(k);
     setEditingCollectionId(null);
     setCollectionForm(emptyCollection());
@@ -304,13 +301,9 @@ export default function Page() {
   };
 
   const openEditCollectionModal = (item: EffectCollection) => {
-    setCollectionModalKind(
-      view === 'collections_video' ? 'video' : 'photo',
-    );
+    setCollectionModalKind(view === 'collections_video' ? 'video' : 'photo');
     setEditingCollectionId(item.id);
-    setCollectionForm(
-      JSON.parse(JSON.stringify(item)) as EffectCollection,
-    );
+    setCollectionForm(JSON.parse(JSON.stringify(item)) as EffectCollection);
     setCollectionDialogOpen(true);
   };
 
@@ -328,9 +321,7 @@ export default function Page() {
       if (idx < 0) {
         return [...prev, { ...collectionForm, sortOrder: prev.length }];
       }
-      return prev.map((x, i) =>
-        i === idx ? { ...collectionForm } : x,
-      );
+      return prev.map((x, i) => (i === idx ? { ...collectionForm } : x));
     });
     setCollectionDialogOpen(false);
     setEditingCollectionId(null);
@@ -348,8 +339,11 @@ export default function Page() {
     }
   };
 
-  const openAdd = () => {
-    if (addType === 'trend') {
+  const openAdd = (kind: AddType) => {
+    setCreateKind(kind);
+    setTrendDialogOpen(false);
+    setEffectDialogOpen(false);
+    if (kind === 'trend') {
       setEditingTrend(null);
       setTrendForm(emptyTrendForm);
       setTrendCover(null);
@@ -359,17 +353,7 @@ export default function Page() {
       setTrendDialogOpen(true);
       return;
     }
-    if (addType === 'collection_photo') {
-      setView('collections_photo');
-      openNewCollectionModal('photo');
-      return;
-    }
-    if (addType === 'collection_video') {
-      setView('collections_video');
-      openNewCollectionModal('video');
-      return;
-    }
-    const type = mapAddTypeToEffectType(addType);
+    const type = kind === 'video_effect' ? 'video_effect' : 'photo_effect';
     setEditingEffect(null);
     setEffectForm(emptyEffectForm(type));
     setEffectCoverFile(null);
@@ -396,6 +380,12 @@ export default function Page() {
   };
 
   const openEditEffect = (item: AdminEffectTemplate) => {
+    const rawDurations = Array.isArray(item.options?.durations)
+      ? item.options?.durations
+      : [];
+    const parsedDurations = rawDurations
+      .map((value) => Number(value))
+      .filter((value) => value === 5 || value === 10 || value === 15);
     setEditingEffect(item);
     setEffectForm({
       name: item.name || '',
@@ -403,13 +393,28 @@ export default function Page() {
       type: item.type,
       model: templateModelToSelectValue(item.type, item.modelParams),
       defaultPrompt: item.defaultPrompt || '',
-      exampleImageSet: (
-        Array.isArray(item.exampleImageSet) ? item.exampleImageSet : []
+      exampleImageSet: (Array.isArray(item.exampleImageSet)
+        ? item.exampleImageSet
+        : []
       ).slice(0, 2),
       costTokens:
         item.costTokens != null && item.costTokens >= 0
           ? String(item.costTokens)
           : '',
+      displayTargets: Array.isArray(item.displayTargets)
+        ? item.displayTargets.filter((v) => typeof v === 'string')
+        : [],
+      videoDurations:
+        item.type === 'video_effect'
+          ? parsedDurations.length
+            ? [...new Set(parsedDurations)]
+            : [5]
+          : [5],
+      gender:
+        item.gender === 'male' || item.gender === 'female'
+          ? item.gender
+          : 'both',
+      isHot: item.isHot === true,
       isActive: item.isActive,
     });
     setEffectCoverFile(null);
@@ -429,7 +434,9 @@ export default function Page() {
     fd.append('isHot', String(trendForm.isHot));
     if (trendCover) fd.append('trendingCover', trendCover);
     const maxNew = Math.max(0, 2 - trendExistingImages.length);
-    trendImages.slice(0, maxNew).forEach((f) => fd.append('trendingImageSet', f));
+    trendImages
+      .slice(0, maxNew)
+      .forEach((f) => fd.append('trendingImageSet', f));
     if (editingTrend) {
       const removed = trendInitialImages.filter(
         (url) => !trendExistingImages.includes(url),
@@ -472,6 +479,17 @@ export default function Page() {
         costTokensNum >= 0
           ? costTokensNum
           : null;
+      const normalizedDurations = effectForm.videoDurations
+        .map((value) => Number(value))
+        .filter((value) => value === 5 || value === 10 || value === 15);
+      const options =
+        effectForm.type === 'video_effect'
+          ? {
+              durations: normalizedDurations.length
+                ? [...new Set(normalizedDurations)]
+                : [5],
+            }
+          : {};
       const payload: Partial<AdminEffectTemplate> = {
         name: effectForm.name.trim(),
         description: effectForm.description.trim() || null,
@@ -485,6 +503,15 @@ export default function Page() {
           model: resolveModelForType(effectForm.type, effectForm.model),
         },
         costTokens,
+        displayTargets: effectForm.displayTargets,
+        options,
+        gender: effectForm.gender,
+        isHot: effectForm.isHot,
+        publishToTrends: effectForm.displayTargets.includes('trends-page'),
+        trendGender: effectForm.gender,
+        trendIsHot: effectForm.isHot,
+        trendCoverText: effectForm.name.trim(),
+        trendContent: effectForm.defaultPrompt.trim() || undefined,
         isActive: effectForm.isActive,
       };
       if (editingEffect) {
@@ -507,41 +534,14 @@ export default function Page() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Тренды / Коллекции
+            Тренды / Эффекты
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Единый раздел управления трендами и коллекциями эффектов
+            Единый раздел управления трендами и шаблонами эффектов
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Select
-            value={addType}
-            onValueChange={(v) => setAddType(v as AddType)}
-          >
-            <SelectTrigger className="w-[min(100%,380px)] max-w-[380px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="trend">
-                Новый тренд для волшебного фото
-              </SelectItem>
-              <SelectItem value="photo_effect">Новый фотоэффект</SelectItem>
-              <SelectItem value="photo_edit_template">
-                Новые шаблоны для редактирования фото
-              </SelectItem>
-              <SelectItem value="video_effect">Новый видеоэффект</SelectItem>
-              <SelectItem value="live_photo_template">
-                Новые шаблоны для оживления
-              </SelectItem>
-              <SelectItem value="collection_photo">
-                Новая коллекция фотоэффектов
-              </SelectItem>
-              <SelectItem value="collection_video">
-                Новая коллекция видеоэффектов
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={openAdd}>
+          <Button onClick={() => openAdd('trend')}>
             <Plus className="w-4 h-4 mr-2" />
             Добавить
           </Button>
@@ -558,15 +558,6 @@ export default function Page() {
             <SelectItem value="effects_all">Все эффекты</SelectItem>
             <SelectItem value="photo_effect">Фотоэффекты</SelectItem>
             <SelectItem value="video_effect">Видеоэффекты</SelectItem>
-            <SelectItem value="live_photo_template">
-              Шаблоны оживления
-            </SelectItem>
-            <SelectItem value="collections_photo">
-              Коллекции фотоэффектов
-            </SelectItem>
-            <SelectItem value="collections_video">
-              Коллекции видеоэффектов
-            </SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -802,6 +793,24 @@ export default function Page() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {!editingTrend ? (
+              <div className="space-y-1.5">
+                <Label>Тип сущности</Label>
+                <Select
+                  value={createKind}
+                  onValueChange={(v) => openAdd(v as AddType)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="trend">Тренд</SelectItem>
+                    <SelectItem value="photo_effect">Фотоэффект</SelectItem>
+                    <SelectItem value="video_effect">Видеоэффект</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
             <div className="space-y-1.5">
               <Label>Заголовок на обложке</Label>
               <Input
@@ -936,6 +945,24 @@ export default function Page() {
               {editingEffect ? 'Редактировать эффект' : 'Новый эффект'}
             </DialogTitle>
           </DialogHeader>
+          {!editingEffect ? (
+            <div className="space-y-1.5">
+              <Label>Тип сущности</Label>
+              <Select
+                value={createKind}
+                onValueChange={(v) => openAdd(v as AddType)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="trend">Тренд</SelectItem>
+                  <SelectItem value="photo_effect">Фотоэффект</SelectItem>
+                  <SelectItem value="video_effect">Видеоэффект</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
           <EffectTemplateDialogForm
             type={effectForm.type}
             onTypeChange={(next) =>
@@ -943,14 +970,16 @@ export default function Page() {
                 ...f,
                 type: next,
                 model: resolveModelForType(next, f.model),
+                videoDurations:
+                  next === 'video_effect'
+                    ? f.videoDurations.length
+                      ? f.videoDurations
+                      : [5]
+                    : [5],
               }))
             }
             name={effectForm.name}
             onNameChange={(v) => setEffectForm((f) => ({ ...f, name: v }))}
-            description={effectForm.description}
-            onDescriptionChange={(v) =>
-              setEffectForm((f) => ({ ...f, description: v }))
-            }
             model={effectForm.model}
             onModelChange={(v) => setEffectForm((f) => ({ ...f, model: v }))}
             costTokens={effectForm.costTokens}
@@ -1001,6 +1030,115 @@ export default function Page() {
             onIsActiveChange={(v) =>
               setEffectForm((f) => ({ ...f, isActive: v }))
             }
+            footerExtra={
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Где показывать шаблон</Label>
+                  <div className="grid gap-2">
+                    {effectDisplayTargetOptions.map((option) => (
+                      <label
+                        key={option.id}
+                        className="inline-flex items-center gap-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={effectForm.displayTargets.includes(
+                            option.id,
+                          )}
+                          onChange={(e) =>
+                            setEffectForm((f) => ({
+                              ...f,
+                              displayTargets: e.target.checked
+                                ? [...new Set([...f.displayTargets, option.id])]
+                                : f.displayTargets.filter(
+                                    (v) => v !== option.id,
+                                  ),
+                            }))
+                          }
+                        />
+                        {option.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Пол</Label>
+                    <Select
+                      value={effectForm.gender}
+                      onValueChange={(value) =>
+                        setEffectForm((f) => ({
+                          ...f,
+                          gender: value as 'male' | 'female' | 'both',
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="both">Все</SelectItem>
+                        <SelectItem value="female">Женские</SelectItem>
+                        <SelectItem value="male">Мужские</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <label className="inline-flex items-center gap-2 text-sm self-end">
+                    <input
+                      type="checkbox"
+                      checked={effectForm.isHot}
+                      onChange={(e) =>
+                        setEffectForm((f) => ({
+                          ...f,
+                          isHot: e.target.checked,
+                        }))
+                      }
+                    />
+                    Хит
+                  </label>
+                </div>
+                {effectForm.type === 'video_effect' ? (
+                  <div className="space-y-2">
+                    <Label>Длительность видео (секунды)</Label>
+                    <div className="flex flex-wrap gap-3">
+                      {[5, 10, 15].map((duration) => (
+                        <label
+                          key={duration}
+                          className="inline-flex items-center gap-2 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={effectForm.videoDurations.includes(
+                              duration,
+                            )}
+                            onChange={(e) =>
+                              setEffectForm((f) => {
+                                const next = e.target.checked
+                                  ? [
+                                      ...new Set([
+                                        ...f.videoDurations,
+                                        duration,
+                                      ]),
+                                    ]
+                                  : f.videoDurations.filter(
+                                      (v) => v !== duration,
+                                    );
+                                return {
+                                  ...f,
+                                  videoDurations: next.length ? next : [5],
+                                };
+                              })
+                            }
+                          />
+                          {duration}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            }
+            showTypeSelect={false}
           />
           <DialogFooter>
             <Button
@@ -1014,7 +1152,10 @@ export default function Page() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={collectionDialogOpen} onOpenChange={setCollectionDialogOpen}>
+      <Dialog
+        open={collectionDialogOpen}
+        onOpenChange={setCollectionDialogOpen}
+      >
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -1108,8 +1249,8 @@ export default function Page() {
                 </Label>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Неотмеченное состояние: коллекция видна во всех разделах этого
-                  типа (фото или видео). Отметьте страницы, если нужно ограничить
-                  показ.
+                  типа (фото или видео). Отметьте страницы, если нужно
+                  ограничить показ.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                   {collectionDisplayTargetOptions.map((target) => {
@@ -1126,8 +1267,7 @@ export default function Page() {
                           className="rounded border"
                           checked={selected}
                           onChange={(e) => {
-                            const current =
-                              collectionForm.displayTargets || [];
+                            const current = collectionForm.displayTargets || [];
                             const next = e.target.checked
                               ? [...new Set([...current, target.id])]
                               : current.filter((t) => t !== target.id);

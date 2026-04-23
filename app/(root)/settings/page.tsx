@@ -18,10 +18,6 @@ type FormState = {
   imageCost: number;
   videoCost: number;
   videoPricePerSecond: number;
-  videoDurationPricing: Array<{
-    duration: number;
-    pricePerSecond: number;
-  }>;
   photoEffectCost: number;
   videoEffectCost: number;
   aiCost1K: number;
@@ -70,29 +66,6 @@ const parseLines = (value: string) =>
     .map((v) => v.trim())
     .filter(Boolean);
 
-const normalizeVideoDurationPricing = (
-  value: unknown,
-): Array<{ duration: number; pricePerSecond: number }> => {
-  if (!Array.isArray(value)) return [];
-  const parsed = value
-    .map((item) => ({
-      duration: Math.floor(Number((item as any)?.duration)),
-      pricePerSecond: Number((item as any)?.pricePerSecond),
-    }))
-    .filter(
-      (item) =>
-        Number.isFinite(item.duration) &&
-        item.duration > 0 &&
-        Number.isFinite(item.pricePerSecond) &&
-        item.pricePerSecond > 0,
-    );
-  const uniq = new Map<number, number>();
-  parsed.forEach((item) => uniq.set(item.duration, item.pricePerSecond));
-  return [...uniq.entries()]
-    .map(([duration, pricePerSecond]) => ({ duration, pricePerSecond }))
-    .sort((a, b) => a.duration - b.duration);
-};
-
 const defaultRouting = {
   photo_effect: { models: ['nano-banana-2', 'nano-banana-pro'] },
   video_effect: {
@@ -134,7 +107,6 @@ const Page = () => {
     imageCost: 15,
     videoCost: 40,
     videoPricePerSecond: 8,
-    videoDurationPricing: [],
     photoEffectCost: 15,
     videoEffectCost: 40,
     aiCost1K: 15,
@@ -190,9 +162,6 @@ const Page = () => {
           imageCost: settings.imageCost,
           videoCost: settings.videoCost,
           videoPricePerSecond: settings.videoPricePerSecond ?? 8,
-          videoDurationPricing: normalizeVideoDurationPricing(
-            settings.videoDurationPricing,
-          ),
           photoEffectCost: settings.photoEffectCost ?? 15,
           videoEffectCost: settings.videoEffectCost ?? 40,
           aiCost1K: settings.aiCost1K,
@@ -341,44 +310,6 @@ const Page = () => {
                     }
                     className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
-                </div>
-
-                <div className="space-y-2 col-span-2">
-                  <label className="flex items-center gap-2 text-sm font-medium">
-                    <Video className="h-4 w-4 text-lime-400" />
-                    Видео: длительность и цена за 1 сек
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={form.videoDurationPricing
-                      .map((item) => `${item.duration}:${item.pricePerSecond}`)
-                      .join('\n')}
-                    onChange={(e) => {
-                      const parsed = e.target.value
-                        .split('\n')
-                        .map((line) => line.trim())
-                        .filter(Boolean)
-                        .map((line) => {
-                          const [durationRaw, priceRaw] = line.split(':');
-                          return {
-                            duration: Math.floor(Number(durationRaw)),
-                            pricePerSecond: Number(priceRaw),
-                          };
-                        });
-                      setForm((f) => ({
-                        ...f,
-                        videoDurationPricing:
-                          normalizeVideoDurationPricing(parsed),
-                      }));
-                    }}
-                    placeholder={`10:8\n20:7.5\n30:7`}
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none font-mono"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Формат: длительность:цена_за_сек, одна запись на строку.
-                    Если длительность не найдена, используется базовая цена за 1
-                    сек.
-                  </p>
                 </div>
 
                 <div className="space-y-2">
