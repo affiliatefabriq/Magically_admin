@@ -69,10 +69,20 @@ const parseLines = (value: string) =>
 const defaultRouting = {
   photo_effect: { models: ['nano-banana-2', 'nano-banana-pro'] },
   video_effect: {
-    models: ['kling', 'higgsfield-video', 'minimax-hailuo', 'grok-video'],
+    models: [
+      'kling-v3',
+      'kling-v2.5',
+      'higgsfield-cinematic',
+      'minimax-hailuo',
+    ],
   },
   live_photo_template: {
-    models: ['kling', 'higgsfield-video', 'minimax-hailuo', 'grok-video'],
+    models: [
+      'kling-v3',
+      'kling-v2.5',
+      'higgsfield-cinematic',
+      'minimax-hailuo',
+    ],
   },
 };
 
@@ -108,7 +118,7 @@ const Page = () => {
     videoCost: 40,
     videoPricePerSecond: 8,
     photoEffectCost: 15,
-    videoEffectCost: 40,
+    videoEffectCost: 35,
     aiCost1K: 15,
     aiCost2K: 20,
     systemPrompt: '',
@@ -163,7 +173,7 @@ const Page = () => {
           videoCost: settings.videoCost,
           videoPricePerSecond: settings.videoPricePerSecond ?? 8,
           photoEffectCost: settings.photoEffectCost ?? 15,
-          videoEffectCost: settings.videoEffectCost ?? 40,
+          videoEffectCost: settings.videoEffectCost ?? 35,
           aiCost1K: settings.aiCost1K,
           aiCost2K: settings.aiCost2K,
           systemPrompt: settings.systemPrompt,
