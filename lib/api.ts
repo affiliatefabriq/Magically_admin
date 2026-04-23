@@ -2,9 +2,10 @@ import axios, { AxiosResponse, AxiosError } from 'axios';
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE = API_URL.replace(/\/api\/v1\/?$/, '');
 
 const api = axios.create({
-  baseURL: `${API_URL}/api/v1`,
+  baseURL: `${API_BASE}/api/v1`,
   withCredentials: true,
 });
 

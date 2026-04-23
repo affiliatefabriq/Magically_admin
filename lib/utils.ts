@@ -2,6 +2,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL;
+export const API_BASE = (API_URL || '').replace(/\/api\/v1\/?$/, '');
 export const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 export const S3_URL = process.env.NEXT_PUBLIC_S3_ENDPOINT;
 export const S3 = process.env.NEXT_PUBLIC_S3;
@@ -48,13 +49,13 @@ export const getImageUrl = (src: string) => {
   }
 
   if (normalizedSrc.startsWith('/')) {
-    if (API_URL) return `${API_URL}${normalizedSrc}`;
+    if (API_BASE) return `${API_BASE}${normalizedSrc}`;
     if (typeof window !== 'undefined') {
       return `${window.location.origin}${normalizedSrc}`;
     }
     return normalizedSrc;
   }
 
-  if (API_URL) return `${API_URL}/${normalizedSrc}`;
+  if (API_BASE) return `${API_BASE}/${normalizedSrc}`;
   return normalizedSrc;
 };

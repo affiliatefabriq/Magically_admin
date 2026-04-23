@@ -7,20 +7,20 @@ export const PHOTO_EFFECT_MODELS = [
 ] as const;
 
 export const VIDEO_EFFECT_MODELS = [
-  'kling',
-  'higgsfield-video',
+  'kling-v3',
+  'kling-v2.5',
+  'higgsfield-cinematic',
   'minimax-hailuo',
-  'grok-video',
 ] as const;
 
 export const MODEL_PROVIDER_MAP: Record<string, string> = {
   'nano-banana-2': 'nano',
   'nano-banana-pro': 'nano-pro',
   flux: 'flux',
-  'higgsfield-video': 'higgsfield',
-  kling: 'kling',
-  'minimax-hailuo': 'hailuo/minimax-2.3',
-  'grok-video': 'grok-video',
+  'kling-v3': 'kling',
+  'kling-v2.5': 'kling',
+  'higgsfield-cinematic': 'higgsfield',
+  'minimax-hailuo': 'minimax-hailuo',
 };
 
 export const getModelsForType = (
@@ -38,6 +38,10 @@ export const resolveModelForType = (
   current: string,
 ): string => {
   const list = getModelsForType(type);
+  if (type !== 'photo_effect') {
+    const normalized = normalizeVideoModelAlias(current);
+    if (normalized && list.includes(normalized)) return normalized;
+  }
   if (list.includes(current)) return current;
   return list[0];
 };
@@ -64,15 +68,8 @@ export const templateModelToSelectValue = (
   if (s && list.includes(s)) return s;
   if (type !== 'photo_effect') {
     if (!s) return defaultModelForType(type);
-    const lower = s.toLowerCase();
-    if (lower === 'kling' || lower.startsWith('kling/'))
-      return list.includes('kling') ? 'kling' : list[0];
-    if (lower.includes('higgsfield'))
-      return list.includes('higgsfield-video') ? 'higgsfield-video' : list[0];
-    if (lower.includes('hailuo') || lower.includes('minimax'))
-      return list.includes('minimax-hailuo') ? 'minimax-hailuo' : list[0];
-    if (lower.includes('grok'))
-      return list.includes('grok-video') ? 'grok-video' : list[0];
+    const normalized = normalizeVideoModelAlias(s);
+    if (normalized && list.includes(normalized)) return normalized;
     return list[0];
   }
   if (!s) return defaultModelForType(type);
@@ -89,3 +86,44 @@ export const templateModelToSelectValue = (
     return list.includes('flux') ? 'flux' : list[0];
   return list[0];
 };
+
+function normalizeVideoModelAlias(value: string): string | null {
+  const lower = value.trim().toLowerCase();
+  if (!lower) return null;
+  if (
+    lower === 'kling' ||
+    lower === 'kling-v3' ||
+    lower === 'kling-3.0' ||
+    lower === 'kling/v3.0' ||
+    lower === 'kuaishou/kling-3.0' ||
+    lower === 'kuaishou/kling-3.0-video'
+  ) {
+    return 'kling-v3';
+  }
+  if (
+    lower === 'kling-v2.5' ||
+    lower === 'kling-2.5' ||
+    lower === 'kling/v2.5' ||
+    lower === 'kuaishou/kling-2.5' ||
+    lower === 'kuaishou/kling-2.5-turbo-video'
+  ) {
+    return 'kling-v2.5';
+  }
+  if (
+    lower === 'higgsfield' ||
+    lower === 'higgsfield-video' ||
+    lower === 'higgsfield-cinematic' ||
+    lower === 'higgsfield/cinematic-studio-video'
+  ) {
+    return 'higgsfield-cinematic';
+  }
+  if (
+    lower === 'minimax' ||
+    lower === 'hailuo' ||
+    lower === 'minimax-hailuo' ||
+    lower === 'hailuo/minimax-2.3'
+  ) {
+    return 'minimax-hailuo';
+  }
+  return null;
+}

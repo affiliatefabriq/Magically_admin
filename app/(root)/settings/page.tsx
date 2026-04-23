@@ -86,6 +86,86 @@ const defaultRouting = {
   },
 };
 
+const normalizeVideoRoutingModel = (value: string): string | null => {
+  const lower = value.trim().toLowerCase();
+  if (!lower) return null;
+  if (
+    lower === 'kling' ||
+    lower === 'kling-v3' ||
+    lower === 'kling-3.0' ||
+    lower === 'kling/v3.0' ||
+    lower === 'kuaishou/kling-3.0' ||
+    lower === 'kuaishou/kling-3.0-video'
+  ) {
+    return 'kling-v3';
+  }
+  if (
+    lower === 'kling-v2.5' ||
+    lower === 'kling-2.5' ||
+    lower === 'kling/v2.5' ||
+    lower === 'kuaishou/kling-2.5' ||
+    lower === 'kuaishou/kling-2.5-turbo-video'
+  ) {
+    return 'kling-v2.5';
+  }
+  if (
+    lower === 'higgsfield' ||
+    lower === 'higgsfield-video' ||
+    lower === 'higgsfield-cinematic' ||
+    lower === 'higgsfield/cinematic-studio-video'
+  ) {
+    return 'higgsfield-cinematic';
+  }
+  if (
+    lower === 'minimax' ||
+    lower === 'hailuo' ||
+    lower === 'minimax-hailuo' ||
+    lower === 'hailuo/minimax-2.3'
+  ) {
+    return 'minimax-hailuo';
+  }
+  return null;
+};
+
+const normalizeRouting = (
+  routing: FormState['effectRouting'] | null | undefined,
+): FormState['effectRouting'] => {
+  const source = routing || defaultRouting;
+  const photo = Array.isArray(source.photo_effect?.models)
+    ? source.photo_effect.models.filter((m) =>
+        defaultRouting.photo_effect.models.includes(m),
+      )
+    : [];
+  const normalizeVideoList = (values: unknown): string[] => {
+    if (!Array.isArray(values)) return [];
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const raw of values) {
+      if (typeof raw !== 'string') continue;
+      const normalized = normalizeVideoRoutingModel(raw);
+      if (!normalized || seen.has(normalized)) continue;
+      seen.add(normalized);
+      out.push(normalized);
+    }
+    return out;
+  };
+  const video = normalizeVideoList(source.video_effect?.models);
+  const live = normalizeVideoList(source.live_photo_template?.models);
+  return {
+    photo_effect: {
+      models: photo.length ? photo : [...defaultRouting.photo_effect.models],
+    },
+    video_effect: {
+      models: video.length ? video : [...defaultRouting.video_effect.models],
+    },
+    live_photo_template: {
+      models: live.length
+        ? live
+        : [...defaultRouting.live_photo_template.models],
+    },
+  };
+};
+
 type SectionKey =
   | 'pricing'
   | 'trial'
@@ -183,7 +263,7 @@ const Page = () => {
           trialTokens: settings.trialTokens,
           trialPeriodDays: settings.trialPeriodDays,
           subscriptionGracePeriodDays: settings.subscriptionGracePeriodDays,
-          effectRouting: settings.effectRouting || defaultRouting,
+          effectRouting: normalizeRouting(settings.effectRouting),
 
           titlesEn: settings.titlesEn || {
             guest: [],
@@ -240,7 +320,10 @@ const Page = () => {
   );
 
   const handleSave = () => {
-    update.mutate(form as any);
+    update.mutate({
+      ...form,
+      effectRouting: normalizeRouting(form.effectRouting),
+    } as any);
   };
 
   const toggleSection = (key: SectionKey) => {
